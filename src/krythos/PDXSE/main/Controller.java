@@ -21,11 +21,11 @@ import javax.swing.filechooser.FileSystemView;
 import krythos.PDXSE.database.DataNode;
 import krythos.util.logger.Log;
 import krythos.util.swing.Dialogs;
+import krythos.util.system_utils.SystemUtils;
 
 public class Controller {
 	private DataNode m_data;
 	private EditorGUI m_editor;
-
 
 	public Controller() {
 		m_data = null;
@@ -38,7 +38,6 @@ public class Controller {
 
 		m_editor = new EditorGUI(m_data, this);
 	}
-
 
 	public void popCheat() {
 		Log.info(this, "popCheat");
@@ -108,15 +107,15 @@ public class Controller {
 		}
 		// Assign to Lowest Pop Provinces
 		for (int i = start_pop; i < start_pop + Integer.valueOf(parts[POPS]); i++) {
-			map_populations = sortByValue(map_populations, true); // Sort Map			
+			map_populations = sortByValue(map_populations, true); // Sort Map
 			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
 			Integer count = map_populations.get(province);
 			province.addNode(new DataNode("pop", new DataNode(i + ""), false)); // Add pop
-			map_populations.put(province, count+1); // increment count
+			map_populations.put(province, count + 1); // increment count
 		}
 
 	}
-	
+
 	private static Map<DataNode, Integer> sortByValue(Map<DataNode, Integer> unsortMap, final boolean order) {
 		List<Entry<DataNode, Integer>> list = new LinkedList<>(unsortMap.entrySet());
 
@@ -128,7 +127,6 @@ public class Controller {
 						: o2.getValue().compareTo(o1.getValue()));
 		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
 	}
-
 
 	public void save() {
 		Log.info(this, "Saving File:");
@@ -143,14 +141,18 @@ public class Controller {
 		Log.info(this, "Save Complete");
 	}
 
-
 	private File getFile() {
-		File def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
+		File def_file = null;
+		if(SystemUtils.isWindows())
+			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
 				+ "\\Paradox Interactive\\Imperator\\save games");
+		else if(SystemUtils.isLinux())
+			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
+					+ "/.local/share/Paradox Interactive/Imperator/save games/");
 		Log.info(this, "Filename: " + def_file.getPath());
-		return Dialogs.fileChooser(false, null, def_file)[0];
+		File[] files = Dialogs.fileChooser(false, null, def_file);
+		return files != null && files.length > 0 ? files[0] : null;
 	}
-
 
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
 		Log.info(this, "Saving Data...");
@@ -164,7 +166,6 @@ public class Controller {
 		Log.debug(this, "PrintWriter Complete");
 		Log.info(this, "Save Complete");
 	}
-
 
 	private void getData(DataNode node, PrintWriter stream) {
 		// Log.debug(this, "GetData Node:" + node.toString());
@@ -187,7 +188,7 @@ public class Controller {
 			if (n.getNodes().size() <= 0 && !n.isList()) {
 				stream.print(output + n.getKey() + (node.getNodes().size() == 1 ? "\n" : " "));
 				output = "";
-			} else  // Is Key-List
+			} else // Is Key-List
 				getData(n, stream);
 
 		}
@@ -195,7 +196,6 @@ public class Controller {
 			stream.print(output + " } \n");
 		}
 	}
-
 
 	private DataNode loadData(File save_game) throws IOException {
 		Log.info(this, "Loading File: " + save_game.getAbsolutePath());
@@ -281,7 +281,7 @@ public class Controller {
 									.addNode(new DataNode(parts[0], new DataNode(parts[1], false), false));
 							line = null;
 						}
-					} else if (operator == NEWNODE) {	// First is a NEWNODE
+					} else if (operator == NEWNODE) { // First is a NEWNODE
 						// Has another operator
 						if (other_operators) {
 							// Entering a nested node
@@ -292,9 +292,10 @@ public class Controller {
 								line = null;
 								// Single-line Nested Node
 							} else if (line.charAt(second) == RETURNPATH) {
-								/*DataNode newNode = new DataNode(parts[0]);
-								path.get(path.size() - 1).addNode(newNode);
-								path.add(newNode);*/
+								/*
+								 * DataNode newNode = new DataNode(parts[0]); path.get(path.size() -
+								 * 1).addNode(newNode); path.add(newNode);
+								 */
 								line = parts[1];
 							} else if (line.charAt(second) == EQUALS) {
 								line = parts[1];

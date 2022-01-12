@@ -46,17 +46,19 @@ public class DataNode {
 				return n;
 		return null;
 	}
-	
-	
+
+
 	/**
-	 * Returns how many DataNodes inside this DataNode have the same key. 
+	 * Returns how many DataNodes inside this DataNode have the same key.
+	 * 
 	 * @param key
-	 * @return {@code Integer} of how many DataNodes share the specified key.
+	 * @return {@code Integer} of how many DataNodes share the specified
+	 *         key.
 	 */
 	public int queryCount(String key) {
-		int c=0;
-		for(DataNode n : getNodes())
-			if(n.getKey().equals(key))
+		int c = 0;
+		for (DataNode n : getNodes())
+			if (n.getKey().equals(key))
 				c++;
 		return c;
 	}
@@ -108,6 +110,36 @@ public class DataNode {
 
 	public String getKey() {
 		return m_key;
+	}
+
+
+	/**
+	 * Retrieves the total number of {@link DataNode}s nested within this
+	 * DataNode.
+	 * 
+	 * @return Total number of nested DataNodes.
+	 */
+	public int length() {
+		int length = this.getNodes().size();
+		for (DataNode n : this.getNodes())
+			length += n.length();
+		return length;
+	}
+
+
+	/**
+	 * Retrieves the total bytes of the key of this {@link DataNode} and
+	 * of all DataNodes nested within this DataNode.
+	 * 
+	 * @return Total bytes of this DataNode and nested DataNodes.
+	 */
+	public long byteLength() {
+		long length = 0;
+		length += this.getKey().length();
+
+		for (DataNode n : this.getNodes())
+			length += n.byteLength();
+		return length;
 	}
 
 

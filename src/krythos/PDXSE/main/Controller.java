@@ -16,11 +16,14 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.swing.JFrame;
+import javax.swing.JProgressBar;
 import javax.swing.filechooser.FileSystemView;
 
 import krythos.PDXSE.database.DataNode;
 import krythos.util.logger.Log;
 import krythos.util.swing.Dialogs;
+import krythos.util.swing.SimpleProgressBar;
 
 public class Controller {
 	private DataNode m_data;
@@ -108,15 +111,16 @@ public class Controller {
 		}
 		// Assign to Lowest Pop Provinces
 		for (int i = start_pop; i < start_pop + Integer.valueOf(parts[POPS]); i++) {
-			map_populations = sortByValue(map_populations, true); // Sort Map			
+			map_populations = sortByValue(map_populations, true); // Sort Map
 			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
 			Integer count = map_populations.get(province);
 			province.addNode(new DataNode("pop", new DataNode(i + ""), false)); // Add pop
-			map_populations.put(province, count+1); // increment count
+			map_populations.put(province, count + 1); // increment count
 		}
 
 	}
-	
+
+
 	private static Map<DataNode, Integer> sortByValue(Map<DataNode, Integer> unsortMap, final boolean order) {
 		List<Entry<DataNode, Integer>> list = new LinkedList<>(unsortMap.entrySet());
 
@@ -137,7 +141,7 @@ public class Controller {
 			Log.info(this, "Save File: " + save_location.getAbsolutePath());
 			saveData(m_data, save_location);
 		} catch (FileNotFoundException e) {
-			Log.error("Main", e.getMessage());
+			Log.error(this, e.getMessage());
 			e.printStackTrace();
 		}
 		Log.info(this, "Save Complete");
@@ -155,18 +159,28 @@ public class Controller {
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
 		Log.info(this, "Saving Data...");
 		Log.debug(this, "Running PrintWriter");
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
+		Log.debug(this, "Progress Bar Status:\n" + progress_bar.statusString());
+		progress_bar.setTitle("Saving Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.setVisible(true);
+
 		PrintWriter output = new PrintWriter(save_location);
 		for (DataNode n : root.getNodes()) {
-			getData(n, output);
+			getData(n, output, progress_bar.bar());
 			output.print("\n");
 		}
 		output.close();
+
+		// progress_bar.dispose();
+
 		Log.debug(this, "PrintWriter Complete");
 		Log.info(this, "Save Complete");
 	}
 
 
-	private void getData(DataNode node, PrintWriter stream) {
+	private void getData(DataNode node, PrintWriter stream, JProgressBar bar) {
 		// Log.debug(this, "GetData Node:" + node.toString());
 		String output = node.getKey();
 
@@ -178,6 +192,9 @@ public class Controller {
 		} else if (node.getNodes().size() == 1)
 			output += "=";
 
+		if (bar != null)
+			bar.setValue(bar.getValue() + output.length());
+
 		stream.print(output);
 		output = "";
 
@@ -185,10 +202,15 @@ public class Controller {
 		for (DataNode n : node.getNodes()) {
 			// Is Value
 			if (n.getNodes().size() <= 0 && !n.isList()) {
-				stream.print(output + n.getKey() + (node.getNodes().size() == 1 ? "\n" : " "));
+				output = n.getKey() + (node.getNodes().size() == 1 ? "\n" : " ");
+
+				if (bar != null)
+					bar.setValue(bar.getValue() + output.length());
+
+				stream.print(output);
 				output = "";
 			} else  // Is Key-List
-				getData(n, stream);
+				getData(n, stream, bar);
 
 		}
 		if (node.isList()) {
@@ -200,7 +222,15 @@ public class Controller {
 	private DataNode loadData(File save_game) throws IOException {
 		Log.info(this, "Loading File: " + save_game.getAbsolutePath());
 
-		// Setup Scanner
+		// ProgressBar
+		int size_kb = (int) (save_game.length() / 1000);
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, size_kb);
+		progress_bar.setTitle("Loading Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.setVisible(true);
+
+		// Setup BufferedReader
 		BufferedReader br = null;
 		try {
 			br = new BufferedReader(new FileReader(save_game));
@@ -217,10 +247,12 @@ public class Controller {
 
 		// Collect data
 		String line;
+		long char_count = 0;
 		char EQUALS = '=';
 		char NEWNODE = '{';
 		char RETURNPATH = '}';
 		while ((line = br.readLine()) != null) {
+			char_count += line.length();
 			line = line.trim();
 			boolean f_firstIteration = true;
 			while (line != null && !line.equals("")) {
@@ -328,10 +360,12 @@ public class Controller {
 				f_firstIteration = false;
 			}
 			f_firstIteration = true;
+			progress_bar./*bar().*/setValue((int) (char_count / 1000));
 		}
+		progress_bar.setValue(progress_bar.bar().getMaximum());
+		progress_bar.dispose();
 
 		br.close();
-
 		Log.info(this, "Load Complete");
 		return data_root;
 	}

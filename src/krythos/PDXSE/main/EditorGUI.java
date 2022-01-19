@@ -1,15 +1,14 @@
 package krythos.PDXSE.main;
 
-import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
-import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
@@ -24,6 +23,7 @@ import javax.swing.tree.TreeSelectionModel;
 import krythos.PDXSE.database.DataNode;
 import krythos.util.abstract_interfaces.FunctionalAction;
 import krythos.util.logger.Log;
+import krythos.util.swing.SimpleProgressBar;
 import krythos.util.swing.SwingMisc;
 
 public class EditorGUI extends JFrame {
@@ -49,25 +49,36 @@ public class EditorGUI extends JFrame {
 	}
 
 
-	public void constructTreeFromData(DefaultMutableTreeNode tree_node, DataNode data_node) {
+	public void constructTreeFromData(DefaultMutableTreeNode tree_node, DataNode data_node, JProgressBar bar) {
 		DefaultMutableTreeNode new_node = new DefaultMutableTreeNode(data_node);
 		tree_node.add(new_node);
 
+		if (bar != null)
+			bar.setValue(bar.getValue() + 1);
+
 		// Add Nested Nodes
 		for (DataNode dn : data_node.getNodes())
-			constructTreeFromData(new_node, dn);
+			constructTreeFromData(new_node, dn, bar);
 
 	}
 
 
 	public void initGUI() {
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, m_data.length()+7);
+		progress_bar.setTitle("Initiating GUI...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.setValue(0);
+		progress_bar.setVisible(true);
+
 		//// Create JTree ////
 		// Create Data Tree from Data
 		DefaultMutableTreeNode root = new DefaultMutableTreeNode(m_data);
 		Log.println(root.getUserObject().toString());
 		for (DataNode dn : m_data.getNodes())
-			constructTreeFromData(root, dn);
-
+			constructTreeFromData(root, dn, progress_bar.bar());
+		
+		// Progress Bar
+		progress_bar.increment();
 
 		// Create JTree itself.
 		m_tree = new JTree(root);
@@ -77,6 +88,8 @@ public class EditorGUI extends JFrame {
 				"select");
 		m_tree.getActionMap().put("select", new FunctionalAction(e -> m_txtEditorValue.grabFocus()));
 
+		// Progress Bar
+		progress_bar.increment();
 
 		//// Create GUI ////
 		// Init Content Pane
@@ -84,11 +97,17 @@ public class EditorGUI extends JFrame {
 		SpringLayout layout = new SpringLayout();
 		contentPane.setLayout(layout);
 
+		// Progress Bar
+		progress_bar.increment();
+		
 		// Tree JScrollPane
 		JScrollPane s_pane_jtree = new JScrollPane(m_tree);
 		s_pane_jtree.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		s_pane_jtree.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 
+		// Progress Bar
+		progress_bar.increment();
+		
 		// Editor JPanel
 		JPanel pane_editor = new JPanel();
 		SpringLayout editor_layout = new SpringLayout();
@@ -108,6 +127,9 @@ public class EditorGUI extends JFrame {
 		pane_editor.add(m_txtEditorValue);
 		pane_editor.add(btnPopulate);
 
+		// Progress Bar
+		progress_bar.increment();
+		
 		// Editor JPanel Spring Constraints
 		editor_layout.putConstraint(SpringLayout.NORTH, m_lblEditorKey, 5, SpringLayout.NORTH, pane_editor);
 		editor_layout.putConstraint(SpringLayout.WEST, m_lblEditorKey, 5, SpringLayout.WEST, pane_editor);
@@ -119,6 +141,9 @@ public class EditorGUI extends JFrame {
 		editor_layout.putConstraint(SpringLayout.NORTH, btnPopulate, 5, SpringLayout.SOUTH, m_lblEditorKey);
 		editor_layout.putConstraint(SpringLayout.WEST, btnPopulate, 5, SpringLayout.WEST, pane_editor);
 
+		// Progress Bar
+		progress_bar.increment();
+		
 		// Content Pane Spring Constraints
 		layout.putConstraint(SpringLayout.NORTH, s_pane_jtree, 5, SpringLayout.NORTH, contentPane);
 		layout.putConstraint(SpringLayout.WEST, s_pane_jtree, 5, SpringLayout.WEST, contentPane);
@@ -130,12 +155,17 @@ public class EditorGUI extends JFrame {
 		layout.putConstraint(SpringLayout.SOUTH, pane_editor, -5, SpringLayout.SOUTH, contentPane);
 		layout.putConstraint(SpringLayout.EAST, pane_editor, 0, SpringLayout.EAST, contentPane);
 
-
+		// Progress Bar
+		progress_bar.increment();
+		
 		contentPane.add(s_pane_jtree);
 		contentPane.add(pane_editor);
 		contentPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
 				.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK), "save");
 		contentPane.getActionMap().put("save", new FunctionalAction(e -> m_controller.save()));
+
+		// Progress Bar
+		progress_bar.dispose();
 
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.pack();

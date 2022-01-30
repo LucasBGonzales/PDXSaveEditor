@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.filechooser.FileSystemView;
 
@@ -30,6 +31,7 @@ public class Controller {
 	private DataNode m_data;
 	private EditorGUI m_editor;
 
+
 	public Controller() {
 		m_data = null;
 		try {
@@ -42,8 +44,55 @@ public class Controller {
 		m_editor = new EditorGUI(m_data, this);
 	}
 
-	public void popCheat() {
-		Log.info(this, "popCheat");
+
+	public void convertPopsCheat() {
+		Log.info(this, "convertPopsCheat");
+
+		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
+		if (nation_id == null || nation_id.trim().equals("")) {
+			Log.debug(this, "popCheat: Null Response. Leaving function");
+			return;
+		} else
+			nation_id = nation_id.trim();
+
+		// Get Culture
+		String culture = m_data.find(
+				Arrays.asList((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })).getNode(0).getKey();
+		Log.info(this, "convertPopsCheat: Got Culture");
+
+		// Get Pops
+		Log.info(this, "convertPopsCheat: Getting Pops...");
+		List<DataNode> pop_ids_to_convert = new LinkedList<DataNode>();
+
+		DataNode provinces = m_data.find("provinces");
+		for (DataNode province : provinces.getNodes()) {
+			DataNode owner = province.find("owner");
+			if (owner != null && owner.getNode(0).getKey().equals(nation_id)) {
+				for (DataNode node : province.getNodes()) {
+					if (node.getKey().equals("pop"))
+						pop_ids_to_convert.add(node.getNode(0));
+				}
+			}
+		}		
+
+		// Convert Pops
+		Log.info(this, "convertPopsCheat: Converting Pops...");
+		List<DataNode> population = m_data.find("population").find("population").getNodes();
+		for (DataNode popID : pop_ids_to_convert) {
+			// Find the popID
+			for (DataNode pop : population) {
+				if (pop.getKey().equals(popID.getKey())) {
+					pop.find("culture").getNode(0).setKey(culture);
+					break;
+				}
+			}
+		}
+		Log.info(this, "convertPopsCheat: Done.");
+	}
+
+
+	public void generatePopsCheat() {
+		Log.info(this, "generatePopsCheat");
 
 		String response = Dialogs.showInputAreaDialog(m_editor, "Enter Data", "owner ID here\n" + "# of pops\n"
 				+ "Ratio (slaves:citizen:nobles:freemen:tribesmen)\n" + "culture\n" + "religion");
@@ -118,6 +167,8 @@ public class Controller {
 		}
 
 	}
+
+
 	private static Map<DataNode, Integer> sortByValue(Map<DataNode, Integer> unsortMap, final boolean order) {
 		List<Entry<DataNode, Integer>> list = new LinkedList<>(unsortMap.entrySet());
 
@@ -129,6 +180,7 @@ public class Controller {
 						: o2.getValue().compareTo(o1.getValue()));
 		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
 	}
+
 
 	public void save() {
 		Log.info(this, "Saving File:");
@@ -143,18 +195,20 @@ public class Controller {
 		Log.info(this, "Save Complete");
 	}
 
+
 	private File getFile() {
 		File def_file = null;
-		if(SystemUtils.isWindows())
+		if (SystemUtils.isWindows())
 			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
-				+ "\\Paradox Interactive\\Imperator\\save games");
-		else if(SystemUtils.isLinux())
+					+ "\\Paradox Interactive\\Imperator\\save games");
+		else if (SystemUtils.isLinux())
 			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
 					+ "/.local/share/Paradox Interactive/Imperator/save games/");
 		Log.info(this, "Filename: " + def_file.getPath());
 		File[] files = Dialogs.fileChooser(false, null, def_file);
 		return files != null && files.length > 0 ? files[0] : null;
 	}
+
 
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
 		Log.info(this, "Saving Data...");
@@ -217,6 +271,7 @@ public class Controller {
 			stream.print(output + " } \n");
 		}
 	}
+
 
 	private DataNode loadData(File save_game) throws IOException {
 		Log.info(this, "Loading File: " + save_game.getAbsolutePath());

@@ -47,12 +47,14 @@ public class DataNode {
 		return null;
 	}
 
+
 	/**
-	 * Returns how many DataNodes inside this DataNode have the same key. 	 
+	 * Returns how many DataNodes inside this DataNode have the same key.
 	 * 
 	 * @param key
-
-	 * @return {@code Integer} of how many DataNodes share the specified key.
+	 * 
+	 * @return {@code Integer} of how many DataNodes share the specified
+	 *         key.
 	 */
 	public int queryCount(String key) {
 		int c = 0;
@@ -63,6 +65,15 @@ public class DataNode {
 	}
 
 
+	/**
+	 * Finds the {@link DataNode} from the <code>path</code>, if it
+	 * exists. If the size of <code>path</code> is 0, this DataNode is
+	 * returned.
+	 * 
+	 * @param path
+	 * @return DataNode specified, or <code>null</code> if the DataNode
+	 *         doesn't exist.
+	 */
 	public DataNode find(List<Object> path) {
 		if (path.size() > 0) {
 			for (DataNode n : m_nodes)

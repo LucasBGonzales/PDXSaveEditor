@@ -64,7 +64,7 @@ public class EditorGUI extends JFrame {
 
 
 	public void initGUI() {
-		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, m_data.length()+7);
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, m_data.length() + 7);
 		progress_bar.setTitle("Initiating GUI...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.setValue(0);
@@ -76,7 +76,7 @@ public class EditorGUI extends JFrame {
 		Log.println(root.getUserObject().toString());
 		for (DataNode dn : m_data.getNodes())
 			constructTreeFromData(root, dn, progress_bar.bar());
-		
+
 		// Progress Bar
 		progress_bar.increment();
 
@@ -99,7 +99,7 @@ public class EditorGUI extends JFrame {
 
 		// Progress Bar
 		progress_bar.increment();
-		
+
 		// Tree JScrollPane
 		JScrollPane s_pane_jtree = new JScrollPane(m_tree);
 		s_pane_jtree.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
@@ -107,7 +107,7 @@ public class EditorGUI extends JFrame {
 
 		// Progress Bar
 		progress_bar.increment();
-		
+
 		// Editor JPanel
 		JPanel pane_editor = new JPanel();
 		SpringLayout editor_layout = new SpringLayout();
@@ -121,15 +121,19 @@ public class EditorGUI extends JFrame {
 				new FunctionalAction(e -> updateValue(m_selectedNode, m_txtEditorValue.getText())));
 
 		JButton btnPopulate = new JButton("Populate");
-		btnPopulate.addActionListener(e -> m_controller.popCheat());
+		btnPopulate.addActionListener(e -> m_controller.generatePopsCheat());
+
+		JButton btnConvert = new JButton("Convert Pops");
+		btnConvert.addActionListener(e -> m_controller.convertPopsCheat());
 
 		pane_editor.add(m_lblEditorKey);
 		pane_editor.add(m_txtEditorValue);
 		pane_editor.add(btnPopulate);
+		pane_editor.add(btnConvert);
 
 		// Progress Bar
 		progress_bar.increment();
-		
+
 		// Editor JPanel Spring Constraints
 		editor_layout.putConstraint(SpringLayout.NORTH, m_lblEditorKey, 5, SpringLayout.NORTH, pane_editor);
 		editor_layout.putConstraint(SpringLayout.WEST, m_lblEditorKey, 5, SpringLayout.WEST, pane_editor);
@@ -138,12 +142,15 @@ public class EditorGUI extends JFrame {
 		editor_layout.putConstraint(SpringLayout.WEST, m_txtEditorValue, 5, SpringLayout.EAST, m_lblEditorKey);
 		editor_layout.putConstraint(SpringLayout.EAST, m_txtEditorValue, -5, SpringLayout.EAST, pane_editor);
 
-		editor_layout.putConstraint(SpringLayout.NORTH, btnPopulate, 5, SpringLayout.SOUTH, m_lblEditorKey);
+		editor_layout.putConstraint(SpringLayout.NORTH, btnPopulate, 5, SpringLayout.SOUTH, m_txtEditorValue);
 		editor_layout.putConstraint(SpringLayout.WEST, btnPopulate, 5, SpringLayout.WEST, pane_editor);
+
+		editor_layout.putConstraint(SpringLayout.NORTH, btnConvert, 5, SpringLayout.SOUTH, m_txtEditorValue);
+		editor_layout.putConstraint(SpringLayout.WEST, btnConvert, 5, SpringLayout.EAST, btnPopulate);
 
 		// Progress Bar
 		progress_bar.increment();
-		
+
 		// Content Pane Spring Constraints
 		layout.putConstraint(SpringLayout.NORTH, s_pane_jtree, 5, SpringLayout.NORTH, contentPane);
 		layout.putConstraint(SpringLayout.WEST, s_pane_jtree, 5, SpringLayout.WEST, contentPane);
@@ -157,7 +164,7 @@ public class EditorGUI extends JFrame {
 
 		// Progress Bar
 		progress_bar.increment();
-		
+
 		contentPane.add(s_pane_jtree);
 		contentPane.add(pane_editor);
 		contentPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)

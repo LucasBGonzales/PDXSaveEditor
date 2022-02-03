@@ -1,5 +1,6 @@
 package krythos.PDXSE.main;
 
+import java.awt.Container;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -16,15 +17,24 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JProgressBar;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.filechooser.FileSystemView;
 
 import krythos.PDXSE.database.DataNode;
 import krythos.util.logger.Log;
 import krythos.util.swing.Dialogs;
 import krythos.util.swing.SimpleProgressBar;
+import krythos.util.swing.SwingMisc;
 import krythos.util.system_utils.SystemUtils;
 
 public class Controller {
@@ -32,6 +42,10 @@ public class Controller {
 	private EditorGUI m_editor;
 
 
+	/**
+	 * Constructor will load the data from user-provided save file, then
+	 * initialize the Editor GUI
+	 */
 	public Controller() {
 		m_data = null;
 		try {
@@ -45,6 +59,37 @@ public class Controller {
 	}
 
 
+	/**
+	 * Returns the Primary Culture of the provided nation ID.
+	 * 
+	 * @param nation_id ID of the nation to get the primary culture from.
+	 * @return {@link String} of the primary culture.
+	 */
+	private String getPrimaryCulture(String nation_id) {
+		return m_data
+				.find(Arrays.asList(
+						(Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" }))
+				.getNode(0).getKey();
+	}
+
+
+	/**
+	 * Returns the Primary Religion of the provided nation ID.
+	 * 
+	 * @param nation_id ID of the nation to get the primary religion from.
+	 * @return {@link String} of the primary religion.
+	 */
+	private String getPrimaryReligion(String nation_id) {
+		return m_data
+				.find(Arrays.asList((Object[]) new String[] { "country", "country_database", nation_id, "religion" }))
+				.getNode(0).getKey();
+	}
+
+
+	/**
+	 * Converts all pops of a user-provided nation ID to the primary
+	 * culture of that nation.
+	 */
 	public void convertPopsCheat() {
 		Log.info(this, "convertPopsCheat");
 
@@ -56,9 +101,7 @@ public class Controller {
 			nation_id = nation_id.trim();
 
 		// Get Culture
-		String culture = m_data.find(
-				Arrays.asList((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })).getNode(0).getKey();
-		Log.info(this, "convertPopsCheat: Got Culture");
+		String culture = getPrimaryCulture(nation_id);
 
 		// Get Pops
 		Log.info(this, "convertPopsCheat: Getting Pops...");
@@ -73,7 +116,7 @@ public class Controller {
 						pop_ids_to_convert.add(node.getNode(0));
 				}
 			}
-		}		
+		}
 
 		// Convert Pops
 		Log.info(this, "convertPopsCheat: Converting Pops...");
@@ -88,29 +131,108 @@ public class Controller {
 			}
 		}
 		Log.info(this, "convertPopsCheat: Done.");
+		Log.printDialog("Cheat Complete");
 	}
 
 
+	/**
+	 * Gets a population ratio from the user.
+	 * 
+	 * @return {@link Integer} array representing the desired pop ratio.
+	 */
+	private int[] getPopTypeRatio() {
+		return (new RatiosDialog()).showDialog();
+	}
+
+
+	/**
+	 * Generates a population and spreads it among the owned provinces of
+	 * a particular nation, preferring to fill the lowest-population
+	 * provinces first.
+	 */
 	public void generatePopsCheat() {
 		Log.info(this, "generatePopsCheat");
 
-		String response = Dialogs.showInputAreaDialog(m_editor, "Enter Data", "owner ID here\n" + "# of pops\n"
-				+ "Ratio (slaves:citizen:nobles:freemen:tribesmen)\n" + "culture\n" + "religion");
+		String str_response;
+		int int_response;
 
-		if (response == null || response.equals("")) {
-			Log.debug(this, "popCheat: Null Response. Leaving function");
+		String nation_id, culture, religion;
+		int pop_number;
+		int[] ratio;
+
+		// Nation ID
+		str_response = JOptionPane.showInputDialog("Enter Nation ID: ");
+		if (str_response == null || str_response.trim().equals("")) {
+			Log.debug(null, "Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			return;
+		} else
+			nation_id = str_response.trim();
+
+		// # Pops to Create
+		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
+		if (str_response == null || str_response.trim().equals("")) {
+			Log.debug(null, "Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			return;
+		} else
+			pop_number = Integer.valueOf(str_response.trim());
+
+		// Ratio of Pops
+		ratio = getPopTypeRatio();
+
+		// Culture
+		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Culture?");
+		if (int_response == JOptionPane.YES_OPTION)
+			culture = getPrimaryCulture(nation_id);
+		else {
+			str_response = JOptionPane.showInputDialog("Enter Culture: ");
+			if (str_response == null || str_response.trim().equals("")) {
+				Log.debug(null, "Null Response. Leaving function");
+				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				return;
+			} else
+				culture = str_response.trim();
+		}
+
+		// Religion
+		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Religion?");
+		if (int_response == JOptionPane.YES_OPTION)
+			religion = getPrimaryReligion(nation_id);
+		else {
+			str_response = JOptionPane.showInputDialog("Enter Religion: ");
+			if (str_response == null || str_response.trim().equals("")) {
+				Log.debug(null, "Null Response. Leaving function");
+				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				return;
+			} else
+				religion = str_response.trim();
+		}
+
+		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
+
+
+		////// Generate Pops //////
+
+		// Put owned Provinces into Map -- Do this first to determine if
+		// population can be assigned before creating the pops.
+		DataNode provinces = m_data.find("provinces");
+		Map<DataNode, Integer> map_populations = new HashMap<DataNode, Integer>();
+		for (DataNode province : provinces.getNodes()) {
+			DataNode owner = province.find("owner");
+			if (owner != null && owner.getNode(0).getKey().equals(nation_id)) {
+				int pop_count = province.queryCount("pop");
+				map_populations.put(province, pop_count);
+			}
+		}
+
+		if (map_populations.size() <= 0) {
+			Log.printDialog("Nation doesn't have any provinces.");
 			return;
 		}
 
-		String[] parts = response.split("\n");
-		final int ID = 0;
-		final int POPS = 1;
-		final int RATIO = 2;
-		final int CULTURE = 3;
-		final int RELIGION = 4;
-		final String[] TYPES = { "slaves", "citizen", "nobles", "freemen", "tribesmen" };
 
-		////// Generate Pops //////
+		// Get existing population
 		DataNode population = m_data.find(Arrays.asList("population", "population"));
 		List<DataNode> pops = population.getNodes();
 
@@ -118,13 +240,9 @@ public class Controller {
 		int start_pop = Integer.valueOf(pops.get(pops.size() - 1).getKey()) + 1;
 
 		// Generate Pops
-		String[] s_ratio = parts[RATIO].split(":"); // Get the ratio strings
-		int[] ratio = new int[s_ratio.length];
-		for (int i = 0; i < ratio.length; i++) // Convert to int
-			ratio[i] = Integer.valueOf(s_ratio[i]);
 		int ratio_sum = Arrays.stream(ratio).sum(); // Sum of weights
-		for (int i = 0; i < Integer.valueOf(parts[POPS]); i++) {
-			DataNode newpop = new DataNode("" + (start_pop + i), true);
+		for (int i = 0; i < Integer.valueOf(pop_number); i++) {
+			DataNode newpop = new DataNode(String.valueOf(start_pop + i), true);
 
 			// Type
 			int step = i % ratio_sum;
@@ -139,26 +257,17 @@ public class Controller {
 			newpop.addNode(new DataNode("type", new DataNode(type), false));
 
 			// Culture and Religion
-			newpop.addNode(new DataNode("culture", new DataNode(parts[CULTURE]), false));
-			newpop.addNode(new DataNode("religion", new DataNode(parts[RELIGION]), false));
+			newpop.addNode(new DataNode("culture", new DataNode(culture), false));
+			newpop.addNode(new DataNode("religion", new DataNode(religion), false));
 
 			// Add to population
 			population.addNode(newpop);
 		}
 
 		////// Assign Pops to Provinces //////
-		// Put owned Provinces into Map
-		DataNode provinces = m_data.find("provinces");
-		Map<DataNode, Integer> map_populations = new HashMap<DataNode, Integer>();
-		for (DataNode province : provinces.getNodes()) {
-			DataNode owner = province.find("owner");
-			if (owner != null && owner.getNode(0).getKey().equals(parts[ID])) {
-				int pop_count = province.queryCount("pop");
-				map_populations.put(province, pop_count);
-			}
-		}
+
 		// Assign to Lowest Pop Provinces
-		for (int i = start_pop; i < start_pop + Integer.valueOf(parts[POPS]); i++) {
+		for (int i = start_pop; i < start_pop + Integer.valueOf(pop_number); i++) {
 			map_populations = sortByValue(map_populations, true); // Sort Map
 			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
 			Integer count = map_populations.get(province);
@@ -166,9 +275,19 @@ public class Controller {
 			map_populations.put(province, count + 1); // increment count
 		}
 
+		Log.printDialog("Cheat Complete");
 	}
 
 
+	/**
+	 * Sorts a Map in ascending or descending order based on the values of
+	 * the key-value pairs.
+	 * 
+	 * @param unsortMap The unsorted map to sort.
+	 * @param order     Ascending (<code>true</code>) or Descending
+	 *                  (<code>false</code>).
+	 * @return A sorted Map<DataNode, Integer>.
+	 */
 	private static Map<DataNode, Integer> sortByValue(Map<DataNode, Integer> unsortMap, final boolean order) {
 		List<Entry<DataNode, Integer>> list = new LinkedList<>(unsortMap.entrySet());
 
@@ -182,6 +301,10 @@ public class Controller {
 	}
 
 
+	/**
+	 * Saves the data to a user-specified file in a format readable by
+	 * Imperator: Rome.
+	 */
 	public void save() {
 		Log.info(this, "Saving File:");
 		try {
@@ -196,6 +319,12 @@ public class Controller {
 	}
 
 
+	/**
+	 * Prompts the user for a file location. It will attempt to default
+	 * the view to the save-file location for Imperator: Rome save files.
+	 * 
+	 * @return {@link File} pointing to a file that may or may not exist.
+	 */
 	private File getFile() {
 		File def_file = null;
 		if (SystemUtils.isWindows())
@@ -210,6 +339,17 @@ public class Controller {
 	}
 
 
+	/**
+	 * Saves the provided data to a file at the provided location in a
+	 * format readable by Imperator: Rome.
+	 * 
+	 * @param root          The root {@link DataNode} to use, where all
+	 *                      the nested DataNodes are used to build the
+	 *                      save file.
+	 * @param save_location {@link File} pointing to where the file should
+	 *                      be saved.
+	 * @throws FileNotFoundException
+	 */
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
 		Log.info(this, "Saving Data...");
 		Log.debug(this, "Running PrintWriter");
@@ -222,19 +362,27 @@ public class Controller {
 
 		PrintWriter output = new PrintWriter(save_location);
 		for (DataNode n : root.getNodes()) {
-			getData(n, output, progress_bar.bar());
+			getData(n, output);
 			output.print("\n");
 		}
 		output.close();
-
-		// progress_bar.dispose();
+		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
 
 		Log.debug(this, "PrintWriter Complete");
 		Log.info(this, "Save Complete");
 	}
 
 
-	private void getData(DataNode node, PrintWriter stream, JProgressBar bar) {
+	/**
+	 * Partner function for {@link #saveData(DataNode, File) saveData}
+	 * that primarily retrieves and writes data to a PrintWriter stream.
+	 * It is recursive, calling itself for each nested within the provided
+	 * {@link DataNode}.
+	 * 
+	 * @param node   {@link DataNode} to write data from.
+	 * @param stream {@link PrintWriter} to write data to.
+	 */
+	private void getData(DataNode node, PrintWriter stream) {
 		// Log.debug(this, "GetData Node:" + node.toString());
 		String output = node.getKey();
 
@@ -246,9 +394,6 @@ public class Controller {
 		} else if (node.getNodes().size() == 1)
 			output += "=";
 
-		if (bar != null)
-			bar.setValue(bar.getValue() + output.length());
-
 		stream.print(output);
 		output = "";
 
@@ -258,13 +403,10 @@ public class Controller {
 			if (n.getNodes().size() <= 0 && !n.isList()) {
 				output = n.getKey() + (node.getNodes().size() == 1 ? "\n" : " ");
 
-				if (bar != null)
-					bar.setValue(bar.getValue() + output.length());
-
 				stream.print(output);
 				output = "";
 			} else // Is Key-List
-				getData(n, stream, bar);
+				getData(n, stream);
 
 		}
 		if (node.isList()) {
@@ -273,6 +415,14 @@ public class Controller {
 	}
 
 
+	/**
+	 * Loads the Imperator: Rome save data from the provided file into a
+	 * DataNode.
+	 * 
+	 * @param save_game {@link File} to load data from.
+	 * @return {@link DataNode} containing the loaded data.
+	 * @throws IOException
+	 */
 	private DataNode loadData(File save_game) throws IOException {
 		Log.info(this, "Loading File: " + save_game.getAbsolutePath());
 
@@ -423,6 +573,95 @@ public class Controller {
 		br.close();
 		Log.info(this, "Load Complete");
 		return data_root;
+	}
+
+
+	/**
+	 * Specialized {@link JDialog} to get and provide an {@link Integer}
+	 * array
+	 * representing a ratio of pop types.
+	 * 
+	 * Use {@link RatiosDialog#showDialog() showDialog} to use this
+	 * dialog.
+	 * 
+	 * @author Krythos
+	 */
+	@SuppressWarnings("serial")
+	private class RatiosDialog extends JDialog {
+		public int[] ratio;
+
+
+		/**
+		 * Create GUI
+		 */
+		public RatiosDialog() {
+			this.setModalityType(ModalityType.APPLICATION_MODAL);
+
+			// GUI //
+			Container contentPane = getContentPane();
+			contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
+
+			((JComponent) contentPane).setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+			// JLabel
+			JTextArea lblDisplay = new JTextArea("Enter ratio of pops:\nN:C:F:T:S");
+			lblDisplay.setEditable(false);
+			lblDisplay.setOpaque(false);
+			lblDisplay.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+			contentPane.add(lblDisplay);
+
+			// Ratio Boxes
+			JPanel pnlRatios = new JPanel();
+			pnlRatios.setLayout(new BoxLayout(pnlRatios, BoxLayout.X_AXIS));
+
+			JTextField txtNobles = new JTextField("1");
+			pnlRatios.add(txtNobles);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtCitizens = new JTextField("1");
+			pnlRatios.add(txtCitizens);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtFreemen = new JTextField("1");
+			pnlRatios.add(txtFreemen);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtTribesmen = new JTextField("0");
+			pnlRatios.add(txtTribesmen);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtSlaves = new JTextField("1");
+			pnlRatios.add(txtSlaves);
+
+			contentPane.add(pnlRatios);
+
+			// Confirm Button
+			JButton btnConfirm = new JButton("Confirm");
+			btnConfirm.addActionListener(e -> {
+				String br = ":";
+				String[] parts = (txtNobles.getText() + br + txtCitizens.getText() + br + txtFreemen.getText() + br
+						+ txtTribesmen.getText() + br + txtSlaves.getText()).split(br);
+				ratio = new int[parts.length];
+				for (int i = 0; i < parts.length; i++)
+					ratio[i] = Integer.valueOf(parts[i]);
+				this.setVisible(false);
+			});
+			contentPane.add(btnConfirm);
+
+			this.pack();
+			SwingMisc.centerWindow(this);
+		}
+
+
+		/**
+		 * Use this function to show the dialog and get the result.
+		 * 
+		 * @return
+		 */
+		public int[] showDialog() {
+			this.setVisible(true);
+			return ratio;
+		}
 	}
 
 }

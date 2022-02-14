@@ -13,6 +13,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.KeyStroke;
+import javax.swing.Spring;
 import javax.swing.SpringLayout;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -121,15 +122,23 @@ public class EditorGUI extends JFrame {
 				new FunctionalAction(e -> updateValue(m_selectedNode, m_txtEditorValue.getText())));
 
 		JButton btnPopulate = new JButton("Populate");
-		btnPopulate.addActionListener(e -> m_controller.generatePopsCheat());
+		btnPopulate.addActionListener(e -> m_controller.cheatGeneratePops());
+
+		JButton btnAssimilate = new JButton("Assimilate Pops");
+		btnAssimilate.addActionListener(e -> m_controller.cheatAssimilatePops());
 
 		JButton btnConvert = new JButton("Convert Pops");
-		btnConvert.addActionListener(e -> m_controller.convertPopsCheat());
+		btnConvert.addActionListener(e -> m_controller.cheatConvertPops());
+
+		JButton btnMergeCultures = new JButton("Merge Pop Cultures");
+		btnMergeCultures.addActionListener(e -> m_controller.cheatMergeCultures());
 
 		pane_editor.add(m_lblEditorKey);
 		pane_editor.add(m_txtEditorValue);
 		pane_editor.add(btnPopulate);
+		pane_editor.add(btnAssimilate);
 		pane_editor.add(btnConvert);
+		pane_editor.add(btnMergeCultures);
 
 		// Progress Bar
 		progress_bar.increment();
@@ -143,10 +152,17 @@ public class EditorGUI extends JFrame {
 		editor_layout.putConstraint(SpringLayout.EAST, m_txtEditorValue, -5, SpringLayout.EAST, pane_editor);
 
 		editor_layout.putConstraint(SpringLayout.NORTH, btnPopulate, 5, SpringLayout.SOUTH, m_txtEditorValue);
-		editor_layout.putConstraint(SpringLayout.WEST, btnPopulate, 5, SpringLayout.WEST, pane_editor);
+		editor_layout.putConstraint(SpringLayout.WEST, btnPopulate, 0, SpringLayout.WEST, pane_editor);
 
 		editor_layout.putConstraint(SpringLayout.NORTH, btnConvert, 5, SpringLayout.SOUTH, m_txtEditorValue);
 		editor_layout.putConstraint(SpringLayout.WEST, btnConvert, 5, SpringLayout.EAST, btnPopulate);
+
+		editor_layout.putConstraint(SpringLayout.NORTH, btnAssimilate, 5, SpringLayout.SOUTH, m_txtEditorValue);
+		editor_layout.putConstraint(SpringLayout.WEST, btnAssimilate, 5, SpringLayout.EAST, btnConvert);
+
+		editor_layout.putConstraint(SpringLayout.NORTH, btnMergeCultures, 5, SpringLayout.SOUTH, m_txtEditorValue);
+		editor_layout.putConstraint(SpringLayout.WEST, btnMergeCultures, 5, SpringLayout.EAST, btnAssimilate);
+		editor_layout.putConstraint(SpringLayout.EAST, btnMergeCultures, -5, SpringLayout.EAST, pane_editor);
 
 		// Progress Bar
 		progress_bar.increment();
@@ -176,7 +192,7 @@ public class EditorGUI extends JFrame {
 
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.pack();
-		this.setSize(500, 500);
+		this.setSize(1280, 720);
 		SwingMisc.centerWindow(this);
 		this.setVisible(true);
 	}

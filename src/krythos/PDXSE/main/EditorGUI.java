@@ -133,12 +133,16 @@ public class EditorGUI extends JFrame {
 		JButton btnMergeCultures = new JButton("Merge Pop Cultures");
 		btnMergeCultures.addActionListener(e -> m_controller.cheatMergeCultures());
 
+		JButton btnModSubjects = new JButton("Modify Subjects");
+		btnModSubjects.addActionListener(e -> m_controller.cheatModSubjects());
+
 		pane_editor.add(m_lblEditorKey);
 		pane_editor.add(m_txtEditorValue);
 		pane_editor.add(btnPopulate);
 		pane_editor.add(btnAssimilate);
 		pane_editor.add(btnConvert);
 		pane_editor.add(btnMergeCultures);
+		pane_editor.add(btnModSubjects);
 
 		// Progress Bar
 		progress_bar.increment();
@@ -162,8 +166,11 @@ public class EditorGUI extends JFrame {
 
 		editor_layout.putConstraint(SpringLayout.NORTH, btnMergeCultures, 5, SpringLayout.SOUTH, m_txtEditorValue);
 		editor_layout.putConstraint(SpringLayout.WEST, btnMergeCultures, 5, SpringLayout.EAST, btnAssimilate);
-		editor_layout.putConstraint(SpringLayout.EAST, btnMergeCultures, -5, SpringLayout.EAST, pane_editor);
 
+		editor_layout.putConstraint(SpringLayout.NORTH, btnModSubjects, 5, SpringLayout.SOUTH, m_txtEditorValue);
+		editor_layout.putConstraint(SpringLayout.WEST, btnModSubjects, 5, SpringLayout.EAST, btnMergeCultures);
+		editor_layout.putConstraint(SpringLayout.EAST, btnModSubjects, -5, SpringLayout.EAST, pane_editor);
+		
 		// Progress Bar
 		progress_bar.increment();
 
@@ -171,10 +178,10 @@ public class EditorGUI extends JFrame {
 		layout.putConstraint(SpringLayout.NORTH, s_pane_jtree, 5, SpringLayout.NORTH, contentPane);
 		layout.putConstraint(SpringLayout.WEST, s_pane_jtree, 5, SpringLayout.WEST, contentPane);
 		layout.putConstraint(SpringLayout.SOUTH, s_pane_jtree, -5, SpringLayout.SOUTH, contentPane);
-		layout.putConstraint(SpringLayout.EAST, s_pane_jtree, 0, SpringLayout.HORIZONTAL_CENTER, contentPane);
+		layout.putConstraint(SpringLayout.EAST, s_pane_jtree, 350, SpringLayout.WEST, s_pane_jtree);
 
 		layout.putConstraint(SpringLayout.NORTH, pane_editor, 5, SpringLayout.NORTH, contentPane);
-		layout.putConstraint(SpringLayout.WEST, pane_editor, 5, SpringLayout.HORIZONTAL_CENTER, contentPane);
+		layout.putConstraint(SpringLayout.WEST, pane_editor, 5, SpringLayout.EAST, s_pane_jtree);
 		layout.putConstraint(SpringLayout.SOUTH, pane_editor, -5, SpringLayout.SOUTH, contentPane);
 		layout.putConstraint(SpringLayout.EAST, pane_editor, 0, SpringLayout.EAST, contentPane);
 
@@ -201,7 +208,7 @@ public class EditorGUI extends JFrame {
 	public void updateValue(DataNode node, String value) {
 		if (node == null) {
 			Log.debug(this, "updateValue: Node is Null.");
-			Log.printDialog("Please Select a Node.");
+			Log.showMessageDialog("Please Select a Node.");
 			return;
 		}
 		Log.debug(this, "UpdateValue: " + node.toString(0) + ", " + value);

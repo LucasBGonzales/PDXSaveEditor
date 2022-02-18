@@ -32,10 +32,12 @@ import javax.swing.filechooser.FileSystemView;
 
 import krythos.PDXSE.database.DataNode;
 import krythos.util.logger.Log;
+import krythos.util.misc.KArrays;
+import krythos.util.misc.SystemUtils;
 import krythos.util.swing.Dialogs;
 import krythos.util.swing.SimpleProgressBar;
 import krythos.util.swing.SwingMisc;
-import krythos.util.system_utils.SystemUtils;
+import krythos.util.swing.dialogs.InputListDialog;
 
 public class Controller {
 	private DataNode m_data;
@@ -46,19 +48,23 @@ public class Controller {
 	 * Constructor will load the data from user-provided save file, then
 	 * initialize the Editor GUI
 	 */
+	@SuppressWarnings("unused")
 	public Controller(boolean load_files) {
 		m_data = null;
 		if (load_files) {
 			try {
-				m_data = loadData(getFile());
+				File f = getFile();
+				if (f == null)
+					load_files = false;
+				else
+					m_data = loadData(f);
 			} catch (IOException e1) {
 				Log.error(this, e1.getMessage());
 				e1.printStackTrace();
 			}
-		} else {
-			m_data = new DataNode("Empty");
 		}
-
+		if (!load_files)
+			m_data = new DataNode("Empty");
 		m_editor = new EditorGUI(m_data, this);
 	}
 
@@ -140,7 +146,7 @@ public class Controller {
 		else if (SystemUtils.isLinux())
 			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
 					+ "/.local/share/Paradox Interactive/Imperator/save games/");
-		Log.info(this, "Filename: " + def_file.getPath());
+		Log.info("Filename: " + def_file.getPath());
 		File[] files = Dialogs.fileChooser(false, null, def_file);
 		return files != null && files.length > 0 ? files[0] : null;
 	}
@@ -155,7 +161,7 @@ public class Controller {
 	 *         the owned pops.
 	 */
 	private List<DataNode> getOwnedPops(Object nation_id) {
-		Log.info(this, "convertPopsCheat: Getting Pops...");
+		Log.info("convertPopsCheat: Getting Pops...");
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
 
 		DataNode provinces = m_data.find("provinces");
@@ -230,7 +236,7 @@ public class Controller {
 	 * @throws IOException
 	 */
 	private DataNode loadData(File save_game) throws IOException {
-		Log.info(this, "Loading File: " + save_game.getAbsolutePath());
+		Log.info("Loading File: " + save_game.getAbsolutePath());
 
 		// ProgressBar
 		int size_kb = (int) (save_game.length() / 1000);
@@ -245,7 +251,7 @@ public class Controller {
 		try {
 			br = new BufferedReader(new FileReader(save_game));
 		} catch (FileNotFoundException e) {
-			Log.error(this, e.getMessage());
+			Log.error(e.getMessage());
 			System.exit(0);
 			// e.printStackTrace();
 		}
@@ -288,7 +294,7 @@ public class Controller {
 					line = null;
 
 				} else if (first < 0 && !f_firstIteration) {
-					Log.error(null, "Unhandled Case: First < 0 && !f_firstIteration");
+					Log.error("Unhandled Case: First < 0 && !f_firstIteration");
 					System.exit(0);
 				} else { // This is a line with operators
 					// Get the first operator & split it off.
@@ -350,7 +356,7 @@ public class Controller {
 							} else if (line.charAt(second) == EQUALS) {
 								line = parts[1];
 							} else {
-								Log.error(this, "Unhandled Case in Operator==NEWNODE");
+								Log.error("Unhandled Case in Operator==NEWNODE");
 								System.exit(0);
 							}
 						} else {
@@ -385,7 +391,7 @@ public class Controller {
 		progress_bar.dispose();
 
 		br.close();
-		Log.info(this, "Load Complete");
+		Log.info("Load Complete");
 		return data_root;
 	}
 
@@ -402,10 +408,10 @@ public class Controller {
 	 * @throws FileNotFoundException
 	 */
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
-		Log.info(this, "Saving Data...");
-		Log.debug(this, "Running PrintWriter");
+		Log.info("Saving Data...");
+		Log.debug("Running PrintWriter");
 		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
-		Log.debug(this, "Progress Bar Status:\n" + progress_bar.statusString());
+		Log.debug("Progress Bar Status:\n" + progress_bar.statusString());
 		progress_bar.setTitle("Saving Data...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.bar().setValue(0);
@@ -419,8 +425,17 @@ public class Controller {
 		output.close();
 		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
 
-		Log.debug(this, "PrintWriter Complete");
-		Log.info(this, "Save Complete");
+		Log.debug("PrintWriter Complete");
+		Log.info("Save Complete");
+	}
+
+
+	private String getNationID() {
+		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
+		if (nation_id == null || nation_id.trim().equals("")) {
+			return null;
+		} else
+			return nation_id.trim();
 	}
 
 
@@ -429,26 +444,26 @@ public class Controller {
 	 * culture of that nation.
 	 */
 	public void cheatAssimilatePops() {
-		Log.info(this, "assimilatePopsCheat");
+		Log.info("assimilatePopsCheat");
 
-		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
-		if (nation_id == null || nation_id.trim().equals("")) {
-			Log.debug(this, "popCheat: Null Response. Leaving function");
+		String nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("popCheat: Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
-		} else
-			nation_id = nation_id.trim();
+		}
 
 		// Get Culture
 		String culture = getPrimaryCulture(nation_id);
 
 		// Get Pops
-		Log.info(null, "assimilatePopsCheat: Getting Pops...");
+		Log.info("assimilatePopsCheat: Getting Pops...");
 		List<DataNode> pop_ids_to_convert = getOwnedPops(nation_id);
 
 		// Convert Pops
 		boolean use_old = false;
 		if (use_old) {
-			Log.info(null, "assimilatePopsCheat: Assimilating Pops...");
+			Log.info("assimilatePopsCheat: Assimilating Pops...");
 			List<DataNode> population = m_data.find("population").find("population").getNodes();
 			for (DataNode popID : pop_ids_to_convert) {
 				// Find the popID
@@ -464,26 +479,26 @@ public class Controller {
 			for (DataNode pop : population)
 				pop.find("culture").getNode(0).setKey(culture);
 		}
-		Log.info(null, "assimilatePopsCheat: Done.");
-		Log.printDialog("Cheat Complete");
+		Log.info("assimilatePopsCheat: Done.");
+		Log.showMessageDialog("Cheat Complete");
 	}
 
 
 	public void cheatConvertPops() {
-		Log.info(this, "convertPopsCheat");
+		Log.info("convertPopsCheat");
 
-		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
-		if (nation_id == null || nation_id.trim().equals("")) {
-			Log.debug(this, "popCheat: Null Response. Leaving function");
+		String nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("popCheat: Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
-		} else
-			nation_id = nation_id.trim();
+		}
 
 		// Get Religion
 		String religion = getPrimaryReligion(nation_id);
 
 		// Get Pops
-		Log.info(null, "convertPopsCheat: Getting Pops...");
+		Log.info("convertPopsCheat: Getting Pops...");
 		List<DataNode> pop_ids_to_convert = getOwnedPops(nation_id);
 
 		// Convert Pops
@@ -491,8 +506,8 @@ public class Controller {
 		for (DataNode pop : population)
 			pop.find("religion").getNode(0).setKey(religion);
 
-		Log.info(null, "convertPopsCheat: Done.");
-		Log.printDialog("Cheat Complete");
+		Log.info("convertPopsCheat: Done.");
+		Log.showMessageDialog("Cheat Complete");
 	}
 
 
@@ -502,7 +517,7 @@ public class Controller {
 	 * provinces first.
 	 */
 	public void cheatGeneratePops() {
-		Log.info(this, "generatePopsCheat");
+		Log.info("generatePopsCheat");
 
 		String str_response;
 		int int_response;
@@ -512,18 +527,17 @@ public class Controller {
 		int[] ratio;
 
 		// Nation ID
-		str_response = JOptionPane.showInputDialog("Enter Nation ID: ");
-		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug(null, "Null Response. Leaving function");
+		nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("Null Response. Leaving function");
 			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
-		} else
-			nation_id = str_response.trim();
+		}
 
 		// # Pops to Create
 		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
 		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug(null, "Null Response. Leaving function");
+			Log.debug("Null Response. Leaving function");
 			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		} else
@@ -539,7 +553,7 @@ public class Controller {
 		else {
 			str_response = JOptionPane.showInputDialog("Enter Culture: ");
 			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug(null, "Null Response. Leaving function");
+				Log.debug("Null Response. Leaving function");
 				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
@@ -553,7 +567,7 @@ public class Controller {
 		else {
 			str_response = JOptionPane.showInputDialog("Enter Religion: ");
 			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug(null, "Null Response. Leaving function");
+				Log.debug("Null Response. Leaving function");
 				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
@@ -578,7 +592,7 @@ public class Controller {
 		}
 
 		if (map_populations.size() <= 0) {
-			Log.printDialog("Nation doesn't have any provinces.");
+			Log.showMessageDialog("Nation doesn't have any provinces.");
 			return;
 		}
 
@@ -626,7 +640,7 @@ public class Controller {
 			map_populations.put(province, count + 1); // increment count
 		}
 
-		Log.printDialog("Cheat Complete");
+		Log.showMessageDialog("Cheat Complete");
 	}
 
 
@@ -638,17 +652,16 @@ public class Controller {
 		String str_response;
 		String nation_id, culture_from, culture_to;
 
-		str_response = JOptionPane.showInputDialog("Enter Nation ID");
-		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug(null, "Null Response. Leaving function");
+		nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("Null Response. Leaving function");
 			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
-		} else
-			nation_id = str_response.trim();
+		}
 
 		str_response = JOptionPane.showInputDialog("Enter culture to convert from: ");
 		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug(null, "Null Response. Leaving function");
+			Log.debug("Null Response. Leaving function");
 			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		} else
@@ -656,7 +669,7 @@ public class Controller {
 
 		str_response = JOptionPane.showInputDialog("Enter culture to convert to: ");
 		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug(null, "Null Response. Leaving function");
+			Log.debug("Null Response. Leaving function");
 			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		} else
@@ -672,7 +685,7 @@ public class Controller {
 				culture.setKey(culture_to);
 		}
 
-		Log.printDialog("Cheat Complete");
+		Log.showMessageDialog("Cheat Complete");
 	}
 
 
@@ -681,16 +694,16 @@ public class Controller {
 	 * Imperator: Rome.
 	 */
 	public void save() {
-		Log.info(this, "Saving File:");
+		Log.info("Saving File:");
 		try {
 			File save_location = getFile();
-			Log.info(this, "Save File: " + save_location.getAbsolutePath());
+			Log.info("Save File: " + save_location.getAbsolutePath());
 			saveData(m_data, save_location);
 		} catch (FileNotFoundException e) {
-			Log.error(this, e.getMessage());
+			Log.error(e.getMessage());
 			e.printStackTrace();
 		}
-		Log.info(this, "Save Complete");
+		Log.info("Save Complete");
 	}
 
 
@@ -782,4 +795,97 @@ public class Controller {
 		}
 	}
 
+
+	public void cheatModSubjects() {
+		// Subject Types
+		final String[] subject_types = { "\"feudatory\"", "\"satrapy\"", "\"client_state\"", "\"vassal_tribe\"",
+				"\"tributary\"", "\"subject_colony\"", "\"subject_mercenary_city_state\"",
+				"\"subject_league_city_state\"" };
+
+		// Nation ID
+		String nation_id = getNationID();
+		if (nation_id == null) {
+			Log.info(null, "No Entry. Leaving function", m_editor);
+			return;
+		}
+
+		// Get Dependencies
+		List<DataNode> diplomacy = new LinkedList<DataNode>(m_data.find("diplomacy").getNodes());
+		List<DataNode> dependencies = new LinkedList<DataNode>();
+		for (DataNode n : diplomacy)
+			if (n.getKey().equals("dependency") && n.find("first").find(nation_id) != null)
+				dependencies.add(n);
+
+		// No Subjects
+		if (dependencies.size() <= 0) {
+			JOptionPane.showMessageDialog(m_editor, "No Subjects To Modify");
+			return;
+		}
+
+		// Get Cheat Option
+		String[] choices = { "Change All Subjects to Type...", "Change All Subjects of Type A to Type B...",
+				"Modifiy Individually." };
+		String input = (String) JOptionPane.showInputDialog(m_editor, "Choose Mod Function", "Choose Mod Function",
+				JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+		int cheat_option = -1;
+		for (int i = 0; i < choices.length; i++)
+			if (choices[i].equals(input)) {
+				cheat_option = i;
+				break;
+			}
+
+		if (cheat_option < 0) {
+			Log.info(null, "No Choice Selected. Leaving Function", m_editor);
+			return;
+		}
+
+		// Change All To...
+		if (cheat_option == 0) {
+			String type = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+			for (DataNode n : dependencies)
+				n.find("subject_type").getNode(0).setKey(type);
+		}
+		// Change All Type A to Type B...
+		else if (cheat_option == 1) {
+			String typeA = (String) JOptionPane.showInputDialog(m_editor, "Select Type of Subjects to Change",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+			String typeB = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+
+			for (DataNode n : dependencies) {
+				DataNode st = n.find("subject_type").getNode(0);
+				if (st.getKey().equals(typeA))
+					n.find("subject_type").getNode(0).setKey(typeB);
+			}
+		}
+		// Modify Individually...
+		else if (cheat_option == 2) {
+			InputListDialog.ListSelection[] list_selections = new InputListDialog.ListSelection[dependencies.size()];
+			for (int i = 0; i < list_selections.length; i++) {
+				DataNode dependency = dependencies.get(i);
+				Object message = dependency.find("second").getNode(0).getKey();
+				String str_init = dependency.find("subject_type").getNode(0).getKey();
+				int initial_value = KArrays.indexOf(subject_types, str_init);
+				list_selections[i] = new InputListDialog.ListSelection(message, subject_types, initial_value);
+			}
+
+			// Show modification window and get results.
+			list_selections = Dialogs.showInputListDialog(m_editor, list_selections);
+			if (list_selections == null) {
+				Log.info(null, "Canceled Cheat.", m_editor);
+				return;
+			}
+
+			// Apply Results
+			for (int i = 0; i < list_selections.length; i++) {
+				DataNode dep_subject_type = dependencies.get(i).find("subject_type").getNode(0);
+				dep_subject_type.setKey(list_selections[i].getValue().toString());
+			}
+		}
+
+		Log.showMessageDialog(m_editor, "Cheat Complete");
+	}
+
 }
+

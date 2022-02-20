@@ -14,6 +14,13 @@ public class DataNode {
 	}
 
 
+	public DataNode(String key, boolean isList) {
+		setKey(key);
+		m_nodes = new ArrayList<DataNode>(0);
+		m_isList = isList;
+	}
+
+
 	public DataNode(String key, DataNode data, boolean isList) {
 		this(key, isList);
 		m_nodes.add(data);
@@ -26,114 +33,8 @@ public class DataNode {
 	}
 
 
-	public DataNode(String key, boolean isList) {
-		setKey(key);
-		m_nodes = new ArrayList<DataNode>(0);
-		m_isList = isList;
-	}
-
-
-	/**
-	 * Find's the first DataNode inside of this DataNode with this key.
-	 * 
-	 * @param key Key to find.
-	 * @return {@code DataNode} with the key or null if there is no
-	 *         {@code DataNode} with the key.
-	 */
-	public DataNode find(String key) {
-		for (DataNode n : m_nodes)
-			if (n.getKey().equals(key))
-				return n;
-		return null;
-	}
-
-
-	/**
-	 * Returns how many DataNodes inside this DataNode have the same key.
-	 * 
-	 * @param key
-	 * 
-	 * @return {@code Integer} of how many DataNodes share the specified
-	 *         key.
-	 */
-	public int queryCount(String key) {
-		int c = 0;
-		for (DataNode n : getNodes())
-			if (n.getKey().equals(key))
-				c++;
-		return c;
-	}
-
-
-	/**
-	 * Finds the {@link DataNode} from the <code>path</code>, if it
-	 * exists. If the size of <code>path</code> is 0, this DataNode is
-	 * returned.
-	 * 
-	 * @param path
-	 * @return DataNode specified, or <code>null</code> if the DataNode
-	 *         doesn't exist.
-	 */
-	public DataNode find(List<Object> path) {
-		if (path.size() > 0) {
-			for (DataNode n : m_nodes)
-				if (n.getKey().equals(path.get(0).toString())) {
-					List<Object> new_path = new ArrayList<Object>(path);
-					new_path.remove(0);
-					return n.find(new_path);
-				}
-			return null;
-		} else
-			return this;
-	}
-
-
-	public boolean isList() {
-		return m_isList;
-	}
-
-
 	public void addNode(DataNode n) {
 		this.m_nodes.add(n);
-	}
-
-
-	public List<DataNode> getNodes() {
-		return this.m_nodes;
-	}
-
-
-	public DataNode getNode(int index) {
-		return this.m_nodes.get(index);
-	}
-
-
-	public boolean isKeyValuePair() {
-		return m_nodes.size() == 1 && m_nodes.get(0).getNodes().size() == 0;
-	}
-
-
-	public void setKey(String key) {
-		m_key = key;
-	}
-
-
-	public String getKey() {
-		return m_key;
-	}
-
-
-	/**
-	 * Retrieves the total number of {@link DataNode}s nested within this
-	 * DataNode.
-	 * 
-	 * @return Total number of nested DataNodes.
-	 */
-	public int length() {
-		int length = this.getNodes().size();
-		for (DataNode n : this.getNodes())
-			length += n.length();
-		return length;
 	}
 
 
@@ -161,6 +62,124 @@ public class DataNode {
 					&& n2.isList() == this.isList();
 		}
 		return false;
+	}
+
+
+	/**
+	 * Finds the {@link DataNode} from the <code>path</code>, if it
+	 * exists. If the size of <code>path</code> is 0, this DataNode is
+	 * returned.
+	 * 
+	 * @param path
+	 * @return DataNode specified, or <code>null</code> if the DataNode
+	 *         doesn't exist.
+	 */
+	public DataNode find(List<Object> path) {
+		if (path.size() > 0) {
+			for (DataNode n : m_nodes)
+				if (n.getKey().equals(path.get(0).toString())) {
+					List<Object> new_path = new ArrayList<Object>(path);
+					new_path.remove(0);
+					return n.find(new_path);
+				}
+			return null;
+		} else
+			return this;
+	}
+
+
+	/**
+	 * Finds the first {@link DataNode} inside of this {@code DataNode}
+	 * with this key.
+	 * 
+	 * @param key Key to find.
+	 * @return {@code DataNode} with the key or null if there is no
+	 *         {@code DataNode} with the key.
+	 */
+	public DataNode find(String key) {
+		for (DataNode n : m_nodes)
+			if (n.getKey().equals(key))
+				return n;
+		return null;
+	}
+
+
+	/**
+	 * Finds all the {@link DataNode DataNodes} inside of this
+	 * {@code DataNode} with the given key.
+	 * 
+	 * @param key Key to find.
+	 * @return {@code List<DataNode} of all {@code DataNodes} with the key
+	 *         or {@code null} if there are no
+	 *         {@code DataNodes} with the key.
+	 */
+	public List<DataNode> findAll(String key) {
+		List<DataNode> r = new ArrayList<DataNode>();
+		for (DataNode n : m_nodes)
+			if (n.getKey().equals(key))
+				r.add(n);
+		return r.size() <= 0 ? null : r;
+	}
+
+
+	public String getKey() {
+		return m_key;
+	}
+
+
+	public DataNode getNode(int index) {
+		return this.m_nodes.get(index);
+	}
+
+
+	public List<DataNode> getNodes() {
+		return this.m_nodes;
+	}
+
+
+	public boolean isKeyValuePair() {
+		return m_nodes.size() == 1 && m_nodes.get(0).getNodes().size() == 0;
+	}
+
+
+	public boolean isList() {
+		return m_isList;
+	}
+
+
+	/**
+	 * Retrieves the total number of {@link DataNode}s nested within this
+	 * DataNode.
+	 * 
+	 * @return Total number of nested DataNodes.
+	 */
+	public int length() {
+		int length = this.getNodes().size();
+		for (DataNode n : this.getNodes())
+			length += n.length();
+		return length;
+	}
+
+
+	/**
+	 * Returns how many DataNodes inside this DataNode have the same key.
+	 * 
+	 * @param key
+	 * 
+	 * @return {@code Integer} of how many DataNodes share the specified
+	 *         key.
+	 */
+	public int queryCount(String key) {
+		int c = 0;
+		for (DataNode n : getNodes())
+			if (n.getKey().equals(key))
+				c++;
+		return c;
+	}
+
+
+	public void setKey(String key) {
+		m_key = key;
 	}
 
 

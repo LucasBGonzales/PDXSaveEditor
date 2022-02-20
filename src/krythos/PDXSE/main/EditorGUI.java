@@ -13,7 +13,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.KeyStroke;
-import javax.swing.Spring;
 import javax.swing.SpringLayout;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -170,7 +169,7 @@ public class EditorGUI extends JFrame {
 		editor_layout.putConstraint(SpringLayout.NORTH, btnModSubjects, 5, SpringLayout.SOUTH, m_txtEditorValue);
 		editor_layout.putConstraint(SpringLayout.WEST, btnModSubjects, 5, SpringLayout.EAST, btnMergeCultures);
 		editor_layout.putConstraint(SpringLayout.EAST, btnModSubjects, -5, SpringLayout.EAST, pane_editor);
-		
+
 		// Progress Bar
 		progress_bar.increment();
 

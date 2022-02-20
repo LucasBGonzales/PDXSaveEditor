@@ -38,6 +38,7 @@ import krythos.util.swing.Dialogs;
 import krythos.util.swing.SimpleProgressBar;
 import krythos.util.swing.SwingMisc;
 import krythos.util.swing.dialogs.InputListDialog;
+import krythos.util.swing.dialogs.InputListDialog.ListSelection;
 
 public class Controller {
 	private DataNode m_data;
@@ -161,17 +162,46 @@ public class Controller {
 	 *         the owned pops.
 	 */
 	private List<DataNode> getOwnedPops(Object nation_id) {
-		Log.info("convertPopsCheat: Getting Pops...");
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
 
 		DataNode provinces = m_data.find("provinces");
 		for (DataNode province : provinces.getNodes()) {
 			DataNode owner = province.find("owner");
 			if (owner != null && owner.getNode(0).getKey().equals(nation_id.toString()))
-				for (DataNode node : province.getNodes())
-					if (node.getKey().equals("pop"))
-						pop_ids.add(node.getNode(0));
+				pop_ids.addAll(getPopsFromProvince(province));
+			;
 		}
+		return pop_ids;
+	}
+
+
+	/**
+	 * 
+	 * @param province_id
+	 * @return
+	 */
+	private List<DataNode> getPopsFromProvince(Object province_id) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
+
+		DataNode province = m_data.find(Arrays.asList("provinces", province_id.toString()));
+		pop_ids.addAll(getPops(province));
+
+		return pop_ids;
+	}
+
+
+	/**
+	 * 
+	 * @param province {@link DataNode} of the province to retrieve the
+	 *                 pops from.
+	 * @return {@link List List<DataNode>} of all pops in the given
+	 *         province.
+	 */
+	private List<DataNode> getPops(DataNode province) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
+		for (DataNode node : province.findAll("pop"))
+			pop_ids.add(node.getNode(0));
+
 		return pop_ids;
 	}
 
@@ -439,6 +469,15 @@ public class Controller {
 	}
 
 
+	private String getProvinceID() {
+		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
+		if (province_id == null || province_id.trim().equals("")) {
+			return null;
+		} else
+			return province_id.trim();
+	}
+
+
 	/**
 	 * Converts all pops of a user-provided nation ID to the primary
 	 * culture of that nation.
@@ -446,10 +485,26 @@ public class Controller {
 	public void cheatAssimilatePops() {
 		Log.info("assimilatePopsCheat");
 
-		String nation_id = getNationID();
+		String nation_id = null, province_id = null;
+
+		// Nation ID or by Province ID?
+		ListSelection n_or_p = Dialogs.showInputListDialog(m_editor, new ListSelection(
+				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
+		if (n_or_p != null) {
+			if (n_or_p.getValue().equals("NationID"))
+				nation_id = getNationID();
+			else
+				province_id = getProvinceID();
+
+			nation_id = province_id != null
+					? m_data.find(Arrays.asList("provinces", province_id, "owner")).getNode(0).getKey()
+					: null;
+		}
+
+		// Nothing Entered.
 		if (nation_id == null) {
-			Log.debug("popCheat: Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.warn("cheatAssimilatePops: Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -457,29 +512,20 @@ public class Controller {
 		String culture = getPrimaryCulture(nation_id);
 
 		// Get Pops
-		Log.info("assimilatePopsCheat: Getting Pops...");
-		List<DataNode> pop_ids_to_convert = getOwnedPops(nation_id);
+		Log.info("cheatAssimilatePops: Getting Pops...");
+		List<DataNode> pop_ids_to_convert;
+		if (province_id == null)
+			pop_ids_to_convert = getOwnedPops(nation_id);
+		else
+			pop_ids_to_convert = getPopsFromProvince(province_id);
+
 
 		// Convert Pops
-		boolean use_old = false;
-		if (use_old) {
-			Log.info("assimilatePopsCheat: Assimilating Pops...");
-			List<DataNode> population = m_data.find("population").find("population").getNodes();
-			for (DataNode popID : pop_ids_to_convert) {
-				// Find the popID
-				for (DataNode pop : population) {
-					if (pop.getKey().equals(popID.getKey())) {
-						pop.find("culture").getNode(0).setKey(culture);
-						break;
-					}
-				}
-			}
-		} else {
-			List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
-			for (DataNode pop : population)
-				pop.find("culture").getNode(0).setKey(culture);
-		}
-		Log.info("assimilatePopsCheat: Done.");
+		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
+		for (DataNode pop : population)
+			pop.find("culture").getNode(0).setKey(culture);
+
+		Log.info("cheatAssimilatePops: Done.");
 		Log.showMessageDialog("Cheat Complete");
 	}
 
@@ -487,10 +533,25 @@ public class Controller {
 	public void cheatConvertPops() {
 		Log.info("convertPopsCheat");
 
-		String nation_id = getNationID();
+		String nation_id = null, province_id = null;
+
+		// Nation ID or by Province ID?
+		ListSelection n_or_p = Dialogs.showInputListDialog(m_editor, new ListSelection(
+				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
+		if (n_or_p != null) {
+			if (n_or_p.getValue().equals("NationID"))
+				nation_id = getNationID();
+			else
+				province_id = getProvinceID();
+			nation_id = province_id != null
+					? m_data.find(Arrays.asList("provinces", province_id, "owner")).getNode(0).getKey()
+					: null;
+		}
+
+		// Nothing Entered.
 		if (nation_id == null) {
-			Log.debug("popCheat: Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.warn("cheatConvertPops: Null Response. Leaving function");
+			JOptionPane.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -498,15 +559,19 @@ public class Controller {
 		String religion = getPrimaryReligion(nation_id);
 
 		// Get Pops
-		Log.info("convertPopsCheat: Getting Pops...");
-		List<DataNode> pop_ids_to_convert = getOwnedPops(nation_id);
+		Log.info("cheatConvertPops: Getting Pops...");
+		List<DataNode> pop_ids_to_convert;
+		if (province_id == null)
+			pop_ids_to_convert = getOwnedPops(nation_id);
+		else
+			pop_ids_to_convert = getPopsFromProvince(province_id);
 
 		// Convert Pops
 		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
 		for (DataNode pop : population)
 			pop.find("religion").getNode(0).setKey(religion);
 
-		Log.info("convertPopsCheat: Done.");
+		Log.info("cheatConvertPops: Done.");
 		Log.showMessageDialog("Cheat Complete");
 	}
 

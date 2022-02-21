@@ -15,7 +15,7 @@ public class Runner {
 	public static void main(String[] args) {
 		Log.setLevel(Log.LEVEL_DISABLED);
 		boolean load_file = true;
-		
+
 		// Handle Arguments
 		for (String arg : args) {
 			String[] parts = arg.split("=");

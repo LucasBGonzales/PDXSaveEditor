@@ -73,12 +73,13 @@ public class EditorGUI extends JFrame {
 		//// Create JTree ////
 		// Create Data Tree from Data
 		DefaultMutableTreeNode root = new DefaultMutableTreeNode(m_data);
-		Log.println(root.getUserObject().toString());
+		progress_bar.bar().setString("Initializing Tree Nodes...");
 		for (DataNode dn : m_data.getNodes())
 			constructTreeFromData(root, dn, progress_bar.bar());
 
 		// Progress Bar
 		progress_bar.increment();
+		progress_bar.bar().setString("Creating JTree...");
 
 		// Create JTree itself.
 		m_tree = new JTree(root);
@@ -90,6 +91,7 @@ public class EditorGUI extends JFrame {
 
 		// Progress Bar
 		progress_bar.increment();
+		progress_bar.bar().setString("Creating GUI...");
 
 		//// Create GUI ////
 		// Init Content Pane
@@ -107,6 +109,7 @@ public class EditorGUI extends JFrame {
 
 		// Progress Bar
 		progress_bar.increment();
+		progress_bar.bar().setString("Creating Editor Panel...");
 
 		// Editor JPanel
 		JPanel pane_editor = new JPanel();

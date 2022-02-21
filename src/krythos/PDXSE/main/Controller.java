@@ -46,10 +46,10 @@ public class Controller {
 
 
 	/**
-	 * Constructor will load the data from user-provided save file, then
-	 * initialize the Editor GUI
+	 * Will load the data from user-provided save file, then
+	 * initialize the Editor GUI. If the user doesn't select a file, then
+	 * the GUI will be loaded with no data tree.
 	 */
-	@SuppressWarnings("unused")
 	public Controller(boolean load_files) {
 		m_data = null;
 		if (load_files) {
@@ -154,6 +154,35 @@ public class Controller {
 
 
 	/**
+	 * Retrieves all the cultures represented by the pops in the given
+	 * nation.
+	 * 
+	 * @param nationID Nation from which to search for cultures.
+	 * @return Cultures of pops in the nation.
+	 */
+	private List<String> getNationCultures(Object nationID) {
+		List<String> cultures = new LinkedList<String>();
+		List<DataNode> pops = getPopObjectsFromIDs(getOwnedPops(nationID));
+		for (DataNode pop : pops) {
+			String culture = pop.find("culture").getNode(0).getKey();
+			if (!cultures.contains(culture))
+				cultures.add(culture);
+		}
+
+		return cultures;
+	}
+
+
+	private String getNationID() {
+		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
+		if (nation_id == null || nation_id.trim().equals("")) {
+			return null;
+		} else
+			return nation_id.trim();
+	}
+
+
+	/**
 	 * Gets the Pop IDs of every pop in a province owned by the specified
 	 * nation.
 	 * 
@@ -175,18 +204,17 @@ public class Controller {
 	}
 
 
-	/**
-	 * 
-	 * @param province_id
-	 * @return
-	 */
-	private List<DataNode> getPopsFromProvince(Object province_id) {
-		List<DataNode> pop_ids = new LinkedList<DataNode>();
+	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
+		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
+		List<DataNode> pops_return = new LinkedList<DataNode>();
 
-		DataNode province = m_data.find(Arrays.asList("provinces", province_id.toString()));
-		pop_ids.addAll(getPops(province));
-
-		return pop_ids;
+		for (DataNode pop : population)
+			for (DataNode id : lstIDs)
+				if (pop.getKey().equals(id.getKey())) {
+					pops_return.add(pop);
+					break;
+				}
+		return pops_return;
 	}
 
 
@@ -206,17 +234,18 @@ public class Controller {
 	}
 
 
-	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
-		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
-		List<DataNode> pops_return = new LinkedList<DataNode>();
+	/**
+	 * 
+	 * @param province_id
+	 * @return
+	 */
+	private List<DataNode> getPopsFromProvince(Object province_id) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
 
-		for (DataNode pop : population)
-			for (DataNode id : lstIDs)
-				if (pop.getKey().equals(id.getKey())) {
-					pops_return.add(pop);
-					break;
-				}
-		return pops_return;
+		DataNode province = m_data.find(Arrays.asList("provinces", province_id.toString()));
+		pop_ids.addAll(getPops(province));
+
+		return pop_ids;
 	}
 
 
@@ -226,7 +255,7 @@ public class Controller {
 	 * @return {@link Integer} array representing the desired pop ratio.
 	 */
 	private int[] getPopTypeRatio() {
-		return (new RatiosDialog()).showDialog();
+		return (new PopsRatioDialog()).showDialog();
 	}
 
 
@@ -257,6 +286,15 @@ public class Controller {
 	}
 
 
+	private String getProvinceID() {
+		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
+		if (province_id == null || province_id.trim().equals("")) {
+			return null;
+		} else
+			return province_id.trim();
+	}
+
+
 	/**
 	 * Loads the Imperator: Rome save data from the provided file into a
 	 * DataNode.
@@ -274,6 +312,7 @@ public class Controller {
 		progress_bar.setTitle("Loading Data...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.bar().setValue(0);
+		progress_bar.bar().setString("Loading From File...");
 		progress_bar.setVisible(true);
 
 		// Setup BufferedReader
@@ -417,11 +456,15 @@ public class Controller {
 			f_firstIteration = true;
 			progress_bar.setValue((int) (char_count / 1000));
 		}
+		progress_bar.bar().setString("Cleaning Data Nodes...");
+		data_root.autoAssignParent(true);
+
 		progress_bar.setValue(progress_bar.bar().getMaximum());
 		progress_bar.dispose();
 
 		br.close();
-		Log.info("Load Complete");
+		Log.info("Load File Complete");
+
 		return data_root;
 	}
 
@@ -460,24 +503,6 @@ public class Controller {
 	}
 
 
-	private String getNationID() {
-		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
-		if (nation_id == null || nation_id.trim().equals("")) {
-			return null;
-		} else
-			return nation_id.trim();
-	}
-
-
-	private String getProvinceID() {
-		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
-		if (province_id == null || province_id.trim().equals("")) {
-			return null;
-		} else
-			return province_id.trim();
-	}
-
-
 	/**
 	 * Converts all pops of a user-provided nation ID to the primary
 	 * culture of that nation.
@@ -504,7 +529,7 @@ public class Controller {
 		// Nothing Entered.
 		if (nation_id == null) {
 			Log.warn("cheatAssimilatePops: Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -551,7 +576,7 @@ public class Controller {
 		// Nothing Entered.
 		if (nation_id == null) {
 			Log.warn("cheatConvertPops: Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -595,7 +620,7 @@ public class Controller {
 		nation_id = getNationID();
 		if (nation_id == null) {
 			Log.debug("Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		}
 
@@ -603,7 +628,7 @@ public class Controller {
 		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
 		if (str_response == null || str_response.trim().equals("")) {
 			Log.debug("Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		} else
 			pop_number = Integer.valueOf(str_response.trim());
@@ -619,7 +644,7 @@ public class Controller {
 			str_response = JOptionPane.showInputDialog("Enter Culture: ");
 			if (str_response == null || str_response.trim().equals("")) {
 				Log.debug("Null Response. Leaving function");
-				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
 				culture = str_response.trim();
@@ -633,7 +658,7 @@ public class Controller {
 			str_response = JOptionPane.showInputDialog("Enter Religion: ");
 			if (str_response == null || str_response.trim().equals("")) {
 				Log.debug("Null Response. Leaving function");
-				JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
 				religion = str_response.trim();
@@ -714,32 +739,40 @@ public class Controller {
 	 * (converted) to and from will be defined by the user.
 	 */
 	public void cheatMergeCultures() {
-		String str_response;
 		String nation_id, culture_from, culture_to;
+		Object[] nationCultures;
 
 		nation_id = getNationID();
 		if (nation_id == null) {
 			Log.debug("Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		}
 
-		str_response = JOptionPane.showInputDialog("Enter culture to convert from: ");
-		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug("Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+		nationCultures = getNationCultures(nation_id).toArray();
+		// Ensure there are enough cultures to merge.
+		if (nationCultures.length < 2) {
+			Log.showMessageDialog(m_editor, "Not enough cultures to merge.");
 			return;
-		} else
-			culture_from = '"' + str_response.trim() + '"';
+		}
 
-		str_response = JOptionPane.showInputDialog("Enter culture to convert to: ");
-		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug("Null Response. Leaving function");
-			JOptionPane.showMessageDialog(m_editor, "No Entry, Quitting Function");
+		try {
+			culture_from = Dialogs
+					.showInputListDialog(m_editor,
+							new ListSelection("Select culture to convert from:", nationCultures, 0))
+					.getValue().toString();
+			// Don't allow user to pick the same culture to convert from and to.
+			nationCultures = KArrays.remove(nationCultures, culture_from);
+			culture_to = Dialogs
+					.showInputListDialog(m_editor,
+							new ListSelection("Select culture to convert to:", nationCultures,
+									KArrays.indexOf(nationCultures, getPrimaryCulture(nation_id))))
+					.getValue().toString();
+		} catch (NullPointerException e) {
+			Log.warn("Null Response, Leaving Function");
+			Log.showMessageDialog(m_editor, "No Entry, Quiting Function.");
 			return;
-		} else
-			culture_to = '"' + str_response.trim() + '"';
-
+		}
 		// Get Pops
 		List<DataNode> pops_to_convert = getPopObjectsFromIDs(getOwnedPops(nation_id));
 
@@ -751,113 +784,6 @@ public class Controller {
 		}
 
 		Log.showMessageDialog("Cheat Complete");
-	}
-
-
-	/**
-	 * Saves the data to a user-specified file in a format readable by
-	 * Imperator: Rome.
-	 */
-	public void save() {
-		Log.info("Saving File:");
-		try {
-			File save_location = getFile();
-			Log.info("Save File: " + save_location.getAbsolutePath());
-			saveData(m_data, save_location);
-		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
-			e.printStackTrace();
-		}
-		Log.info("Save Complete");
-	}
-
-
-	/**
-	 * Specialized {@link JDialog} to get and provide an {@link Integer}
-	 * array
-	 * representing a ratio of pop types.
-	 * 
-	 * Use {@link RatiosDialog#showDialog() showDialog} to use this
-	 * dialog.
-	 * 
-	 * @author Krythos
-	 */
-	@SuppressWarnings("serial")
-	private class RatiosDialog extends JDialog {
-		public int[] ratio;
-
-
-		/**
-		 * Create GUI
-		 */
-		public RatiosDialog() {
-			this.setModalityType(ModalityType.APPLICATION_MODAL);
-
-			// GUI //
-			Container contentPane = getContentPane();
-			contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
-
-			((JComponent) contentPane).setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-			// JLabel
-			JTextArea lblDisplay = new JTextArea("Enter ratio of pops:\nN:C:F:T:S");
-			lblDisplay.setEditable(false);
-			lblDisplay.setOpaque(false);
-			lblDisplay.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
-			contentPane.add(lblDisplay);
-
-			// Ratio Boxes
-			JPanel pnlRatios = new JPanel();
-			pnlRatios.setLayout(new BoxLayout(pnlRatios, BoxLayout.X_AXIS));
-
-			JTextField txtNobles = new JTextField("1");
-			pnlRatios.add(txtNobles);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtCitizens = new JTextField("1");
-			pnlRatios.add(txtCitizens);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtFreemen = new JTextField("1");
-			pnlRatios.add(txtFreemen);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtTribesmen = new JTextField("0");
-			pnlRatios.add(txtTribesmen);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtSlaves = new JTextField("1");
-			pnlRatios.add(txtSlaves);
-
-			contentPane.add(pnlRatios);
-
-			// Confirm Button
-			JButton btnConfirm = new JButton("Confirm");
-			btnConfirm.addActionListener(e -> {
-				String br = ":";
-				String[] parts = (txtNobles.getText() + br + txtCitizens.getText() + br + txtFreemen.getText() + br
-						+ txtTribesmen.getText() + br + txtSlaves.getText()).split(br);
-				ratio = new int[parts.length];
-				for (int i = 0; i < parts.length; i++)
-					ratio[i] = Integer.valueOf(parts[i]);
-				this.setVisible(false);
-			});
-			contentPane.add(btnConfirm);
-
-			this.pack();
-			SwingMisc.centerWindow(this);
-		}
-
-
-		/**
-		 * Use this function to show the dialog and get the result.
-		 * 
-		 * @return
-		 */
-		public int[] showDialog() {
-			this.setVisible(true);
-			return ratio;
-		}
 	}
 
 
@@ -950,6 +876,113 @@ public class Controller {
 		}
 
 		Log.showMessageDialog(m_editor, "Cheat Complete");
+	}
+
+
+	/**
+	 * Saves the data to a user-specified file in a format readable by
+	 * Imperator: Rome.
+	 */
+	public void save() {
+		Log.info("Saving File:");
+		try {
+			File save_location = getFile();
+			Log.info("Save File: " + save_location.getAbsolutePath());
+			saveData(m_data, save_location);
+		} catch (FileNotFoundException e) {
+			Log.error(e.getMessage());
+			e.printStackTrace();
+		}
+		Log.info("Save Complete");
+	}
+
+
+	/**
+	 * Specialized {@link JDialog} to get and provide an {@link Integer}
+	 * array
+	 * representing a ratio of pop types.
+	 * 
+	 * Use {@link PopsRatioDialog#showDialog() showDialog} to use this
+	 * dialog.
+	 * 
+	 * @author Krythos
+	 */
+	@SuppressWarnings("serial")
+	private class PopsRatioDialog extends JDialog {
+		public int[] ratio;
+
+
+		/**
+		 * Create GUI
+		 */
+		public PopsRatioDialog() {
+			this.setModalityType(ModalityType.APPLICATION_MODAL);
+
+			// GUI //
+			Container contentPane = getContentPane();
+			contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
+
+			((JComponent) contentPane).setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+			// JLabel
+			JTextArea lblDisplay = new JTextArea("Enter ratio of pops:\nN:C:F:T:S");
+			lblDisplay.setEditable(false);
+			lblDisplay.setOpaque(false);
+			lblDisplay.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+			contentPane.add(lblDisplay);
+
+			// Ratio Boxes
+			JPanel pnlRatios = new JPanel();
+			pnlRatios.setLayout(new BoxLayout(pnlRatios, BoxLayout.X_AXIS));
+
+			JTextField txtNobles = new JTextField("1");
+			pnlRatios.add(txtNobles);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtCitizens = new JTextField("1");
+			pnlRatios.add(txtCitizens);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtFreemen = new JTextField("1");
+			pnlRatios.add(txtFreemen);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtTribesmen = new JTextField("0");
+			pnlRatios.add(txtTribesmen);
+			pnlRatios.add(new JLabel(":"));
+
+			JTextField txtSlaves = new JTextField("1");
+			pnlRatios.add(txtSlaves);
+
+			contentPane.add(pnlRatios);
+
+			// Confirm Button
+			JButton btnConfirm = new JButton("Confirm");
+			btnConfirm.addActionListener(e -> {
+				String br = ":";
+				String[] parts = (txtNobles.getText() + br + txtCitizens.getText() + br + txtFreemen.getText() + br
+						+ txtTribesmen.getText() + br + txtSlaves.getText()).split(br);
+				ratio = new int[parts.length];
+				for (int i = 0; i < parts.length; i++)
+					ratio[i] = Integer.valueOf(parts[i]);
+				this.setVisible(false);
+			});
+			contentPane.add(btnConfirm);
+
+			this.pack();
+			SwingMisc.centerWindow(this);
+		}
+
+
+		/**
+		 * Use this function to show the dialog and get the result.
+		 * 
+		 * @return
+		 */
+		public int[] showDialog() {
+			this.setVisible(true);
+			return ratio;
+		}
 	}
 
 }

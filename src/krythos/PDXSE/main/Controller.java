@@ -1,6 +1,5 @@
 package krythos.PDXSE.main;
 
-import java.awt.Container;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -17,26 +16,19 @@ import java.util.Map.Entry;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.filechooser.FileSystemView;
 
 import krythos.PDXSE.database.DataNode;
+import krythos.PDXSE.gui.EditorGUI;
+import krythos.PDXSE.gui.PopsRatioDialog;
+import krythos.PDXSE.gui.ProvinceEditorDialog;
 import krythos.util.logger.Log;
 import krythos.util.misc.KArrays;
 import krythos.util.misc.SystemUtils;
-import krythos.util.swing.Dialogs;
+import krythos.util.swing.KDialogs;
 import krythos.util.swing.SimpleProgressBar;
-import krythos.util.swing.SwingMisc;
 import krythos.util.swing.dialogs.InputListDialog;
 import krythos.util.swing.dialogs.InputListDialog.ListSelection;
 
@@ -79,8 +71,8 @@ public class Controller {
 	 *                  (<code>false</code>).
 	 * @return A sorted Map<DataNode, Integer>.
 	 */
-	private static Map<DataNode, Integer> sortByValue(Map<DataNode, Integer> unsortMap, final boolean order) {
-		List<Entry<DataNode, Integer>> list = new LinkedList<>(unsortMap.entrySet());
+	private static Map<DataNode, Float> sortByValue(Map<DataNode, Float> unsortMap, final boolean order) {
+		List<Entry<DataNode, Float>> list = new LinkedList<>(unsortMap.entrySet());
 
 		// Sorting the list based on values
 		list.sort((o1, o2) -> order
@@ -148,7 +140,7 @@ public class Controller {
 			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
 					+ "/.local/share/Paradox Interactive/Imperator/save games/");
 		Log.info("Filename: " + def_file.getPath());
-		File[] files = Dialogs.fileChooser(false, null, def_file);
+		File[] files = KDialogs.fileChooser(false, null, def_file);
 		return files != null && files.length > 0 ? files[0] : null;
 	}
 
@@ -242,7 +234,7 @@ public class Controller {
 	private List<DataNode> getPopsFromProvince(Object province_id) {
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
 
-		DataNode province = m_data.find(Arrays.asList("provinces", province_id.toString()));
+		DataNode province = m_data.find("provinces", province_id.toString());
 		pop_ids.addAll(getPops(province));
 
 		return pop_ids;
@@ -255,7 +247,7 @@ public class Controller {
 	 * @return {@link Integer} array representing the desired pop ratio.
 	 */
 	private int[] getPopTypeRatio() {
-		return (new PopsRatioDialog()).showDialog();
+		return (new PopsRatioDialog()).runDialog();
 	}
 
 
@@ -266,9 +258,7 @@ public class Controller {
 	 * @return {@link String} of the primary culture.
 	 */
 	private String getPrimaryCulture(String nation_id) {
-		return m_data
-				.find(Arrays.asList(
-						(Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" }))
+		return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
 				.getNode(0).getKey();
 	}
 
@@ -280,9 +270,8 @@ public class Controller {
 	 * @return {@link String} of the primary religion.
 	 */
 	private String getPrimaryReligion(String nation_id) {
-		return m_data
-				.find(Arrays.asList((Object[]) new String[] { "country", "country_database", nation_id, "religion" }))
-				.getNode(0).getKey();
+		return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" }).getNode(0)
+				.getKey();
 	}
 
 
@@ -513,7 +502,7 @@ public class Controller {
 		String nation_id = null, province_id = null;
 
 		// Nation ID or by Province ID?
-		ListSelection n_or_p = Dialogs.showInputListDialog(m_editor, new ListSelection(
+		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
 				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
 		if (n_or_p != null) {
 			if (n_or_p.getValue().equals("NationID"))
@@ -521,9 +510,8 @@ public class Controller {
 			else
 				province_id = getProvinceID();
 
-			nation_id = province_id != null
-					? m_data.find(Arrays.asList("provinces", province_id, "owner")).getNode(0).getKey()
-					: null;
+			nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
+					: nation_id;
 		}
 
 		// Nothing Entered.
@@ -555,22 +543,26 @@ public class Controller {
 	}
 
 
+	/**
+	 * 
+	 * 
+	 */
 	public void cheatConvertPops() {
 		Log.info("convertPopsCheat");
 
 		String nation_id = null, province_id = null;
 
 		// Nation ID or by Province ID?
-		ListSelection n_or_p = Dialogs.showInputListDialog(m_editor, new ListSelection(
+		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
 				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
 		if (n_or_p != null) {
 			if (n_or_p.getValue().equals("NationID"))
 				nation_id = getNationID();
 			else
 				province_id = getProvinceID();
-			nation_id = province_id != null
-					? m_data.find(Arrays.asList("provinces", province_id, "owner")).getNode(0).getKey()
-					: null;
+
+			nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
+					: nation_id;
 		}
 
 		// Nothing Entered.
@@ -664,39 +656,40 @@ public class Controller {
 				religion = str_response.trim();
 		}
 
-		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
-
-
 		////// Generate Pops //////
+		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
 
 		// Put owned Provinces into Map -- Do this first to determine if
 		// population can be assigned before creating the pops.
 		DataNode provinces = m_data.find("provinces");
-		Map<DataNode, Integer> map_populations = new HashMap<DataNode, Integer>();
+		Map<DataNode, Float> map_populations = new HashMap<DataNode, Float>();
 		for (DataNode province : provinces.getNodes()) {
 			DataNode owner = province.find("owner");
-			if (owner != null && owner.getNode(0).getKey().equals(nation_id)) {
+			if (owner != null && owner.getKeyValue().equals(nation_id)) {
 				int pop_count = province.queryCount("pop");
-				map_populations.put(province, pop_count);
+				// TODO test province rank weighting system
+				if (!province.find("province_rank").getKeyValue().equals("settlement"))
+					pop_count /= 4.4f;
+				map_populations.put(province, (float) pop_count);
 			}
 		}
 
 		if (map_populations.size() <= 0) {
-			Log.showMessageDialog("Nation doesn't have any provinces.");
+			Log.warn(null, "Generate Pops Cheat:\nNation doesn't have any provinces. Leaving function.", m_editor);
 			return;
 		}
 
 
 		// Get existing population
-		DataNode population = m_data.find(Arrays.asList("population", "population"));
+		DataNode population = m_data.find("population", "population");
 		List<DataNode> pops = population.getNodes();
 
 		// First unused pop ID;
-		int start_pop = Integer.valueOf(pops.get(pops.size() - 1).getKey()) + 1;
+		int start_pop = pops.get(pops.size() - 1).getKeyAsInt() + 1;
 
 		// Generate Pops
 		int ratio_sum = Arrays.stream(ratio).sum(); // Sum of weights
-		for (int i = 0; i < Integer.valueOf(pop_number); i++) {
+		for (int i = 0; i < pop_number; i++) {
 			DataNode newpop = new DataNode(String.valueOf(start_pop + i), true);
 
 			// Type
@@ -722,12 +715,14 @@ public class Controller {
 		////// Assign Pops to Provinces //////
 
 		// Assign to Lowest Pop Provinces
-		for (int i = start_pop; i < start_pop + Integer.valueOf(pop_number); i++) {
+		for (int i = start_pop; i < start_pop + pop_number; i++) {
 			map_populations = sortByValue(map_populations, true); // Sort Map
 			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
-			Integer count = map_populations.get(province);
+			Float count = map_populations.get(province);
 			province.addNode(new DataNode("pop", new DataNode(i + ""), false)); // Add pop
-			map_populations.put(province, count + 1); // increment count
+			// TODO test province rank weighting system
+			map_populations.put(province,
+					count + ((!province.find("province_rank").getKeyValue().equals("settlement")) ? 1f / 4.4f : 1));
 		}
 
 		Log.showMessageDialog("Cheat Complete");
@@ -757,13 +752,13 @@ public class Controller {
 		}
 
 		try {
-			culture_from = Dialogs
+			culture_from = KDialogs
 					.showInputListDialog(m_editor,
 							new ListSelection("Select culture to convert from:", nationCultures, 0))
 					.getValue().toString();
 			// Don't allow user to pick the same culture to convert from and to.
 			nationCultures = KArrays.remove(nationCultures, culture_from);
-			culture_to = Dialogs
+			culture_to = KDialogs
 					.showInputListDialog(m_editor,
 							new ListSelection("Select culture to convert to:", nationCultures,
 									KArrays.indexOf(nationCultures, getPrimaryCulture(nation_id))))
@@ -862,7 +857,7 @@ public class Controller {
 			}
 
 			// Show modification window and get results.
-			list_selections = Dialogs.showInputListDialog(m_editor, list_selections);
+			list_selections = KDialogs.showInputListDialog(m_editor, list_selections);
 			if (list_selections == null) {
 				Log.info(null, "Canceled Cheat.", m_editor);
 				return;
@@ -898,92 +893,15 @@ public class Controller {
 
 
 	/**
-	 * Specialized {@link JDialog} to get and provide an {@link Integer}
-	 * array
-	 * representing a ratio of pop types.
-	 * 
-	 * Use {@link PopsRatioDialog#showDialog() showDialog} to use this
-	 * dialog.
-	 * 
-	 * @author Krythos
+	 * Will open a dialog to edit various values of a specified province.
 	 */
-	@SuppressWarnings("serial")
-	private class PopsRatioDialog extends JDialog {
-		public int[] ratio;
-
-
-		/**
-		 * Create GUI
-		 */
-		public PopsRatioDialog() {
-			this.setModalityType(ModalityType.APPLICATION_MODAL);
-
-			// GUI //
-			Container contentPane = getContentPane();
-			contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
-
-			((JComponent) contentPane).setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-
-			// JLabel
-			JTextArea lblDisplay = new JTextArea("Enter ratio of pops:\nN:C:F:T:S");
-			lblDisplay.setEditable(false);
-			lblDisplay.setOpaque(false);
-			lblDisplay.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
-			contentPane.add(lblDisplay);
-
-			// Ratio Boxes
-			JPanel pnlRatios = new JPanel();
-			pnlRatios.setLayout(new BoxLayout(pnlRatios, BoxLayout.X_AXIS));
-
-			JTextField txtNobles = new JTextField("1");
-			pnlRatios.add(txtNobles);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtCitizens = new JTextField("1");
-			pnlRatios.add(txtCitizens);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtFreemen = new JTextField("1");
-			pnlRatios.add(txtFreemen);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtTribesmen = new JTextField("0");
-			pnlRatios.add(txtTribesmen);
-			pnlRatios.add(new JLabel(":"));
-
-			JTextField txtSlaves = new JTextField("1");
-			pnlRatios.add(txtSlaves);
-
-			contentPane.add(pnlRatios);
-
-			// Confirm Button
-			JButton btnConfirm = new JButton("Confirm");
-			btnConfirm.addActionListener(e -> {
-				String br = ":";
-				String[] parts = (txtNobles.getText() + br + txtCitizens.getText() + br + txtFreemen.getText() + br
-						+ txtTribesmen.getText() + br + txtSlaves.getText()).split(br);
-				ratio = new int[parts.length];
-				for (int i = 0; i < parts.length; i++)
-					ratio[i] = Integer.valueOf(parts[i]);
-				this.setVisible(false);
-			});
-			contentPane.add(btnConfirm);
-
-			this.pack();
-			SwingMisc.centerWindow(this);
-		}
-
-
-		/**
-		 * Use this function to show the dialog and get the result.
-		 * 
-		 * @return
-		 */
-		public int[] showDialog() {
-			this.setVisible(true);
-			return ratio;
-		}
+	public void cheatEditProvince() {
+		String province_id = getProvinceID();
+		// DataNode province = m_data.find("provinces",
+		// province_id.toString());
+		DataNode province = null;
+		ProvinceEditorDialog province_editor = new ProvinceEditorDialog(province);
+		province_editor.runDialog();
 	}
-
 }
 

@@ -1,4 +1,4 @@
-package krythos.PDXSE.main;
+package krythos.PDXSE.gui;
 
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -21,6 +21,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeSelectionModel;
 
 import krythos.PDXSE.database.DataNode;
+import krythos.PDXSE.main.Controller;
 import krythos.util.abstract_interfaces.FunctionalAction;
 import krythos.util.logger.Log;
 import krythos.util.swing.SimpleProgressBar;
@@ -123,7 +124,7 @@ public class EditorGUI extends JFrame {
 		m_txtEditorValue.getActionMap().put("assign_value",
 				new FunctionalAction(e -> updateValue(m_selectedNode, m_txtEditorValue.getText())));
 
-		JButton btnPopulate = new JButton("Populate");
+		JButton btnPopulate = new JButton("Generate Population");
 		btnPopulate.addActionListener(e -> m_controller.cheatGeneratePops());
 
 		JButton btnAssimilate = new JButton("Assimilate Pops");
@@ -138,6 +139,9 @@ public class EditorGUI extends JFrame {
 		JButton btnModSubjects = new JButton("Modify Subjects");
 		btnModSubjects.addActionListener(e -> m_controller.cheatModSubjects());
 
+		JButton btnProvinceEditor = new JButton("Edit Province");
+		btnProvinceEditor.addActionListener(e -> m_controller.cheatEditProvince());
+
 		pane_editor.add(m_lblEditorKey);
 		pane_editor.add(m_txtEditorValue);
 		pane_editor.add(btnPopulate);
@@ -145,6 +149,7 @@ public class EditorGUI extends JFrame {
 		pane_editor.add(btnConvert);
 		pane_editor.add(btnMergeCultures);
 		pane_editor.add(btnModSubjects);
+		pane_editor.add(btnProvinceEditor);
 
 		// Progress Bar
 		progress_bar.increment();
@@ -171,7 +176,10 @@ public class EditorGUI extends JFrame {
 
 		editor_layout.putConstraint(SpringLayout.NORTH, btnModSubjects, 5, SpringLayout.SOUTH, m_txtEditorValue);
 		editor_layout.putConstraint(SpringLayout.WEST, btnModSubjects, 5, SpringLayout.EAST, btnMergeCultures);
-		editor_layout.putConstraint(SpringLayout.EAST, btnModSubjects, -5, SpringLayout.EAST, pane_editor);
+
+		editor_layout.putConstraint(SpringLayout.NORTH, btnProvinceEditor, 5, SpringLayout.SOUTH, m_txtEditorValue);
+		editor_layout.putConstraint(SpringLayout.WEST, btnProvinceEditor, 5, SpringLayout.EAST, btnModSubjects);
+		editor_layout.putConstraint(SpringLayout.EAST, btnProvinceEditor, -5, SpringLayout.EAST, pane_editor);
 
 		// Progress Bar
 		progress_bar.increment();

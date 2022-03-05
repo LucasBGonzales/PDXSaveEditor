@@ -1,6 +1,7 @@
 package krythos.PDXSE.database;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class DataNode {
@@ -164,7 +165,7 @@ public class DataNode {
 	 * exists. If the size of <code>path</code> is 0, this DataNode is
 	 * returned.
 	 * 
-	 * @param path
+	 * @param path Path of DataNode to find.
 	 * @return DataNode specified, or <code>null</code> if the DataNode
 	 *         doesn't exist.
 	 */
@@ -179,6 +180,17 @@ public class DataNode {
 			return null;
 		} else
 			return this;
+	}
+	
+	
+	/**
+	 * Convenience function. Converts the arguments to a list and calls {@link DataNode#find(List) find(List)}.
+	 * @param path Path of DataNode to find.
+	 * @return DataNode specified, or <code>null</code> if the DataNode
+	 *         doesn't exist.
+	 */
+	public DataNode find(Object... path) {
+		return find(Arrays.asList(path));
 	}
 
 
@@ -217,11 +229,35 @@ public class DataNode {
 
 
 	/**
-	 * Gets the key of the node.  
+	 * Gets the key of the node.
+	 * 
 	 * @return this node's key.
 	 */
 	public String getKey() {
 		return m_key;
+	}
+
+
+	/**
+	 * Gets the key of the node represented as
+	 * <p>
+	 * <code>Integer.valueOf(getKey());</code>
+	 * 
+	 * @return The node's key as an integer.
+	 */
+	public int getKeyAsInt() {
+		return Integer.valueOf(m_key);
+	}
+
+
+	/**
+	 * Returns the key of the first child node. Useful when the
+	 * {@link DataNode} is a known key-value pair.
+	 * 
+	 * @return {@link String} Key of the first child of the node.
+	 */
+	public String getKeyValue() {
+		return this.m_nodes.get(0).getKey();
 	}
 
 

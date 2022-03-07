@@ -1,5 +1,8 @@
 package krythos.PDXSE.gui;
 
+import java.awt.Component;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
@@ -37,18 +40,15 @@ public class EditorGUI extends JFrame {
 	private JTree m_tree;
 	private JTextField m_txtEditorValue;
 
-
 	public EditorGUI() {
 		this(new DataNode("Root", false), null);
 	}
-
 
 	public EditorGUI(DataNode data, Controller controller) {
 		m_controller = controller;
 		m_data = data;
 		initGUI();
 	}
-
 
 	public void constructTreeFromData(DefaultMutableTreeNode tree_node, DataNode data_node, JProgressBar bar) {
 		DefaultMutableTreeNode new_node = new DefaultMutableTreeNode(data_node);
@@ -62,7 +62,6 @@ public class EditorGUI extends JFrame {
 			constructTreeFromData(new_node, dn, bar);
 
 	}
-
 
 	public void initGUI() {
 		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, m_data.length() + 7);
@@ -214,7 +213,6 @@ public class EditorGUI extends JFrame {
 		this.setVisible(true);
 	}
 
-
 	public void updateValue(DataNode node, String value) {
 		if (node == null) {
 			Log.debug(this, "updateValue: Node is Null.");
@@ -225,7 +223,6 @@ public class EditorGUI extends JFrame {
 		node.setKey(m_txtEditorValue.getText());
 		((DefaultTreeModel) m_tree.getModel()).reload();
 	}
-
 
 	private class EditorTreeSelectionListener implements TreeSelectionListener {
 

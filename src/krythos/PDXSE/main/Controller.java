@@ -33,14 +33,35 @@ import krythos.util.swing.dialogs.InputListDialog;
 import krythos.util.swing.dialogs.InputListDialog.ListSelection;
 
 public class Controller {
+	/**
+	 * Sorts a Map in ascending or descending order based on the values of the
+	 * key-value pairs.
+	 * 
+	 * @param unsortMap The unsorted map to sort.
+	 * @param order     Ascending (<code>true</code>) or Descending
+	 *                  (<code>false</code>).
+	 * @return A sorted Map<DataNode, Integer>.
+	 */
+	private static Map<DataNode, Float> sortByValue(Map<DataNode, Float> unsortMap, final boolean order) {
+		List<Entry<DataNode, Float>> list = new LinkedList<>(unsortMap.entrySet());
+
+		// Sorting the list based on values
+		list.sort((o1, o2) -> order
+				? o1.getValue().compareTo(o2.getValue()) == 0 ? o1.getKey().getKey().compareTo(o2.getKey().getKey())
+						: o1.getValue().compareTo(o2.getValue())
+				: o2.getValue().compareTo(o1.getValue()) == 0 ? o2.getKey().getKey().compareTo(o1.getKey().getKey())
+						: o2.getValue().compareTo(o1.getValue()));
+		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
+	}
+
 	private DataNode m_data;
+
 	private EditorGUI m_editor;
 
-
 	/**
-	 * Will load the data from user-provided save file, then
-	 * initialize the Editor GUI. If the user doesn't select a file, then
-	 * the GUI will be loaded with no data tree.
+	 * Will load the data from user-provided save file, then initialize the Editor
+	 * GUI. If the user doesn't select a file, then the GUI will be loaded with no
+	 * data tree.
 	 */
 	public Controller(boolean load_files) {
 		m_data = null;
@@ -61,34 +82,465 @@ public class Controller {
 		m_editor = new EditorGUI(m_data, this);
 	}
 
-
 	/**
-	 * Sorts a Map in ascending or descending order based on the values of
-	 * the key-value pairs.
-	 * 
-	 * @param unsortMap The unsorted map to sort.
-	 * @param order     Ascending (<code>true</code>) or Descending
-	 *                  (<code>false</code>).
-	 * @return A sorted Map<DataNode, Integer>.
+	 * Converts all pops of a user-provided nation ID to the primary culture of that
+	 * nation.
 	 */
-	private static Map<DataNode, Float> sortByValue(Map<DataNode, Float> unsortMap, final boolean order) {
-		List<Entry<DataNode, Float>> list = new LinkedList<>(unsortMap.entrySet());
+	public void cheatAssimilatePops() {
+		Log.info("assimilatePopsCheat");
 
-		// Sorting the list based on values
-		list.sort((o1, o2) -> order
-				? o1.getValue().compareTo(o2.getValue()) == 0 ? o1.getKey().getKey().compareTo(o2.getKey().getKey())
-						: o1.getValue().compareTo(o2.getValue())
-				: o2.getValue().compareTo(o1.getValue()) == 0 ? o2.getKey().getKey().compareTo(o1.getKey().getKey())
-						: o2.getValue().compareTo(o1.getValue()));
-		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
+		String nation_id = null, province_id = null;
+
+		// Nation ID or by Province ID?
+		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
+				"Assimilate by Nation ID or by Individual Provinces?", new String[] { "Nation D", "ProvinceID" }, 0));
+		if (n_or_p != null) {
+			if (n_or_p.getValue().equals("Nation ID"))
+				nation_id = getNationID();
+			else
+				province_id = getProvinceID();
+
+			try {
+				nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
+						: nation_id;
+			} catch (NullPointerException e) {
+				Log.warn("Null Pointer Exception. Probably invalid province input.");
+				nation_id = null;
+			}
+		}
+
+		// Check Validity
+		if (!isValidNationID(nation_id))
+			nation_id = getNationIDFromTag(nation_id);
+
+		// Nothing Entered, or invalid..
+		if (nation_id == null) {
+			Log.warn("cheatAssimilatePops: Null Response. Leaving function");
+			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			return;
+		}
+
+		// Get Culture
+		String culture = getPrimaryCulture(nation_id);
+
+		// Get Pops
+		Log.info("cheatAssimilatePops: Getting Pops...");
+		List<DataNode> pop_ids_to_convert;
+		if (province_id == null)
+			pop_ids_to_convert = getOwnedPops(nation_id);
+		else
+			pop_ids_to_convert = getPopsFromProvince(province_id);
+
+		// Convert Pops
+		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
+		for (DataNode pop : population)
+			pop.find("culture").getNode(0).setKey(culture);
+
+		Log.info("cheatAssimilatePops: Done.");
+		Log.showMessageDialog("Cheat Complete");
 	}
 
+	/**
+	 * 
+	 * 
+	 */
+	public void cheatConvertPops() {
+		Log.info("convertPopsCheat");
+
+		String nation_id = null, province_id = null;
+
+		// Nation ID or by Province ID?
+		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
+				"Assimilate by Nation ID or by Individual Provinces?", new String[] { "Nation ID", "ProvinceID" }, 0));
+		if (n_or_p != null) {
+			if (n_or_p.getValue().equals("Nation ID"))
+				nation_id = getNationID();
+			else
+				province_id = getProvinceID();
+
+			try {
+				nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
+						: nation_id;
+			} catch (NullPointerException e) {
+				Log.warn("Null Pointer Exception. Probably invalid province input.");
+				nation_id = null;
+			}
+		}
+
+		// Check Validity
+		if (!isValidNationID(nation_id))
+			nation_id = getNationIDFromTag(nation_id);
+
+		// Nothing Entered, or invalid..
+		if (nation_id == null) {
+			Log.warn("cheatConvertPops: Null Response. Leaving function");
+			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			return;
+		}
+
+		// Get Religion
+		String religion = getPrimaryReligion(nation_id);
+
+		// Get Pops
+		Log.info("cheatConvertPops: Getting Pops...");
+		List<DataNode> pop_ids_to_convert;
+		if (province_id == null)
+			pop_ids_to_convert = getOwnedPops(nation_id);
+		else
+			pop_ids_to_convert = getPopsFromProvince(province_id);
+
+		// Convert Pops
+		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
+		for (DataNode pop : population)
+			pop.find("religion").getNode(0).setKey(religion);
+
+		Log.info("cheatConvertPops: Done.");
+		Log.showMessageDialog("Cheat Complete");
+	}
 
 	/**
-	 * Partner function for {@link #saveData(DataNode, File) saveData}
-	 * that primarily retrieves and writes data to a PrintWriter stream.
-	 * It is recursive, calling itself for each nested within the provided
-	 * {@link DataNode}.
+	 * Will open a dialog to edit various values of a specified province.
+	 */
+	public void cheatEditProvince() {
+		// String province_id = getProvinceID();
+		// DataNode province = m_data.find("provinces",
+		// province_id.toString());
+		DataNode province = null;
+		ProvinceEditorDialog province_editor = new ProvinceEditorDialog(province);
+		province_editor.runDialog();
+	}
+
+	/**
+	 * Generates a population and spreads it among the owned provinces of a
+	 * particular nation, preferring to fill the lowest-population provinces first.
+	 */
+	public void cheatGeneratePops() {
+		Log.info("generatePopsCheat");
+
+		String str_response;
+		int int_response;
+
+		String nation_id, culture, religion;
+		int pop_number;
+		int[] ratio;
+
+		// Nation ID
+		nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("Null Response. Leaving function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			return;
+		}
+
+		// # Pops to Create
+		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
+		if (str_response == null || str_response.trim().equals("")) {
+			Log.debug("Null Response. Leaving function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			return;
+		} else
+			pop_number = Integer.valueOf(str_response.trim());
+
+		// Ratio of Pops
+		ratio = getPopTypeRatio();
+
+		// Culture
+		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Culture?");
+		if (int_response == JOptionPane.YES_OPTION)
+			culture = getPrimaryCulture(nation_id);
+		else {
+			str_response = JOptionPane.showInputDialog("Enter Culture: ");
+			if (str_response == null || str_response.trim().equals("")) {
+				Log.debug("Null Response. Leaving function");
+				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				return;
+			} else
+				culture = str_response.trim();
+		}
+
+		// Religion
+		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Religion?");
+		if (int_response == JOptionPane.YES_OPTION)
+			religion = getPrimaryReligion(nation_id);
+		else {
+			str_response = JOptionPane.showInputDialog("Enter Religion: ");
+			if (str_response == null || str_response.trim().equals("")) {
+				Log.debug("Null Response. Leaving function");
+				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				return;
+			} else
+				religion = str_response.trim();
+		}
+
+		////// Generate Pops //////
+		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
+
+		// Put owned Provinces into Map -- Do this first to determine if
+		// population can be assigned before creating the pops.
+		DataNode provinces = m_data.find("provinces");
+		Map<DataNode, Float> map_populations = new HashMap<DataNode, Float>();
+		for (DataNode province : provinces.getNodes()) {
+			DataNode owner = province.find("owner");
+			if (owner != null && owner.getKeyValue().equals(nation_id)) {
+				int pop_count = province.queryCount("pop");
+				if (!province.find("province_rank").getKeyValue().equals("settlement"))
+					pop_count /= 4.4f;
+				map_populations.put(province, (float) pop_count);
+			}
+		}
+
+		if (map_populations.size() <= 0) {
+			Log.warn(null, "Generate Pops Cheat:\nNation doesn't have any provinces. Leaving function.", m_editor);
+			return;
+		}
+
+		// Get existing population
+		DataNode population = m_data.find("population", "population");
+		List<DataNode> pops = population.getNodes();
+
+		// First unused pop ID;
+		int start_pop = pops.get(pops.size() - 1).getKeyAsInt() + 1;
+
+		// Generate Pops
+		int ratio_sum = Arrays.stream(ratio).sum(); // Sum of weights
+		for (int i = 0; i < pop_number; i++) {
+			DataNode newpop = new DataNode(String.valueOf(start_pop + i), true);
+
+			// Type
+			int step = i % ratio_sum;
+			String type = "";
+			for (int i2 = 0; i2 < ratio.length; i2++) {
+				step -= ratio[i2];
+				if (step <= 0) {
+					type = TYPES[i2];
+					break;
+				}
+			}
+			newpop.addNode(new DataNode("type", new DataNode(type), false));
+
+			// Culture and Religion
+			newpop.addNode(new DataNode("culture", new DataNode(culture), false));
+			newpop.addNode(new DataNode("religion", new DataNode(religion), false));
+
+			// Add to population
+			population.addNode(newpop);
+		}
+
+		////// Assign Pops to Provinces //////
+
+		// Assign to Lowest Pop Provinces
+		for (int i = start_pop; i < start_pop + pop_number; i++) {
+			map_populations = sortByValue(map_populations, true); // Sort Map
+			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
+			Float count = map_populations.get(province);
+			province.addNode(new DataNode("pop", new DataNode(i + ""), false)); // Add pop
+			map_populations.put(province,
+					count + ((!province.find("province_rank").getKeyValue().equals("settlement")) ? 1f / 4.4f : 1));
+		}
+
+		Log.showMessageDialog("Cheat Complete");
+	}
+
+	/**
+	 * Will merge two cultures in a nation. The culture to be merged (converted) to
+	 * and from will be defined by the user.
+	 */
+	public void cheatMergeCultures() {
+		String nation_id, culture_from, culture_to;
+		Object[] nationCultures;
+
+		nation_id = getNationID();
+		if (nation_id == null) {
+			Log.debug("Null Response. Leaving function");
+			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			return;
+		}
+
+		nationCultures = getNationCultures(nation_id).toArray();
+		// Ensure there are enough cultures to merge.
+		if (nationCultures.length < 2) {
+			Log.showMessageDialog(m_editor, "Not enough cultures to merge.");
+			return;
+		}
+
+		try {
+			culture_from = KDialogs
+					.showInputListDialog(m_editor,
+							new ListSelection("Select culture to convert from:", nationCultures, 0))
+					.getValue().toString();
+			// Don't allow user to pick the same culture to convert from and to.
+			nationCultures = KArrays.remove(nationCultures, culture_from);
+			culture_to = KDialogs
+					.showInputListDialog(m_editor,
+							new ListSelection("Select culture to convert to:", nationCultures,
+									KArrays.indexOf(nationCultures, getPrimaryCulture(nation_id))))
+					.getValue().toString();
+		} catch (NullPointerException e) {
+			Log.warn("Null Response, Leaving Function");
+			Log.showMessageDialog(m_editor, "No Entry, Quiting Function.");
+			return;
+		}
+		// Get Pops
+		List<DataNode> pops_to_convert = getPopObjectsFromIDs(getOwnedPops(nation_id));
+
+		// Iterate each pop, convert cultures.
+		for (DataNode pop : pops_to_convert) {
+			DataNode culture = pop.find("culture").getNode(0);
+			if (culture.getKey().equals(culture_from))
+				culture.setKey(culture_to);
+		}
+
+		Log.showMessageDialog("Cheat Complete");
+	}
+
+	public void cheatModSubjects() {
+		// Subject Types
+		final String[] subject_types = { "\"feudatory\"", "\"satrapy\"", "\"client_state\"", "\"vassal_tribe\"",
+				"\"tributary\"", "\"subject_colony\"", "\"subject_mercenary_city_state\"",
+				"\"subject_league_city_state\"" };
+
+		// Nation ID
+		String nation_id = getNationID();
+		if (nation_id == null) {
+			Log.info(null, "No Entry. Leaving function", m_editor);
+			return;
+		}
+
+		// Get Dependencies
+		List<DataNode> diplomacy = new LinkedList<DataNode>(m_data.find("diplomacy").getNodes());
+		List<DataNode> dependencies = new LinkedList<DataNode>();
+		for (DataNode n : diplomacy)
+			if (n.getKey().equals("dependency") && n.find("first").find(nation_id) != null)
+				dependencies.add(n);
+
+		// No Subjects
+		if (dependencies.size() <= 0) {
+			JOptionPane.showMessageDialog(m_editor, "No Subjects To Modify");
+			return;
+		}
+
+		// Get Cheat Option
+		String[] choices = { "Change All Subjects to Type...", "Change All Subjects of Type A to Type B...",
+				"Modifiy Individually." };
+		String input = (String) JOptionPane.showInputDialog(m_editor, "Choose Mod Function", "Choose Mod Function",
+				JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+		int cheat_option = -1;
+		for (int i = 0; i < choices.length; i++)
+			if (choices[i].equals(input)) {
+				cheat_option = i;
+				break;
+			}
+
+		if (cheat_option < 0) {
+			Log.info(null, "No Choice Selected. Leaving Function", m_editor);
+			return;
+		}
+
+		// Change All To...
+		if (cheat_option == 0) {
+			String type = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+			for (DataNode n : dependencies)
+				n.find("subject_type").getNode(0).setKey(type);
+		}
+		// Change All Type A to Type B...
+		else if (cheat_option == 1) {
+			String typeA = (String) JOptionPane.showInputDialog(m_editor, "Select Type of Subjects to Change",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+			String typeB = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
+					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
+
+			for (DataNode n : dependencies) {
+				DataNode st = n.find("subject_type").getNode(0);
+				if (st.getKey().equals(typeA))
+					n.find("subject_type").getNode(0).setKey(typeB);
+			}
+		}
+		// Modify Individually...
+		else if (cheat_option == 2) {
+			InputListDialog.ListSelection[] list_selections = new InputListDialog.ListSelection[dependencies.size()];
+			for (int i = 0; i < list_selections.length; i++) {
+				DataNode dependency = dependencies.get(i);
+				Object message = dependency.find("second").getNode(0).getKey();
+				String str_init = dependency.find("subject_type").getNode(0).getKey();
+				int initial_value = KArrays.indexOf(subject_types, str_init);
+				list_selections[i] = new InputListDialog.ListSelection(message, subject_types, initial_value);
+			}
+
+			// Show modification window and get results.
+			list_selections = KDialogs.showInputListDialog(m_editor, list_selections);
+			if (list_selections == null) {
+				Log.info(null, "Canceled Cheat.", m_editor);
+				return;
+			}
+
+			// Apply Results
+			for (int i = 0; i < list_selections.length; i++) {
+				DataNode dep_subject_type = dependencies.get(i).find("subject_type").getNode(0);
+				dep_subject_type.setKey(list_selections[i].getValue().toString());
+			}
+		}
+
+		Log.showMessageDialog(m_editor, "Cheat Complete");
+	}
+
+	/**
+	 * Gets a Nation ID from the Nation Tag.
+	 * 
+	 * @param nation_tag Tag of the nation to search for.
+	 * @return The Nation ID of the nation that matches the Nation Tag, or
+	 *         <code>null</code> if no match was found.
+	 */
+	public String getNationIDFromTag(String nation_tag) {
+		nation_tag = "\"" + nation_tag.toUpperCase() + "\"";
+		DataNode country_database = m_data.find("country", "country_database");
+		if (country_database == null)
+			Log.warn("country_database was null. Probably because nothing was loaded.");
+		else {
+			for (DataNode node : country_database.getNodes()) {
+				if (node.getKey().equals("599")) {
+					Log.debug("bleh");
+					node.find("tag").getKeyValue();
+				}
+				if (node.find("tag").getKeyValue().equals(nation_tag))
+					return node.getKey();
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Determines if the nation ID is valid.
+	 * 
+	 * @param nation_id ID to query.
+	 * @return <code>true</code> if the nation ID was found. <code>false</code> if
+	 *         not.
+	 */
+	public boolean isValidNationID(String nation_id) {
+		return m_data.find("country", "country_database", nation_id) != null;
+	}
+
+	/**
+	 * Saves the data to a user-specified file in a format readable by Imperator:
+	 * Rome.
+	 */
+	public void save() {
+		Log.info("Saving File:");
+		try {
+			File save_location = getFile();
+			Log.info("Save File: " + save_location.getAbsolutePath());
+			saveData(m_data, save_location);
+		} catch (FileNotFoundException e) {
+			Log.error(e.getMessage());
+			e.printStackTrace();
+		}
+		Log.info("Save Complete");
+	}
+
+	/**
+	 * Partner function for {@link #saveData(DataNode, File) saveData} that
+	 * primarily retrieves and writes data to a PrintWriter stream. It is recursive,
+	 * calling itself for each nested within the provided {@link DataNode}.
 	 * 
 	 * @param node   {@link DataNode} to write data from.
 	 * @param stream {@link PrintWriter} to write data to.
@@ -124,10 +576,9 @@ public class Controller {
 		}
 	}
 
-
 	/**
-	 * Prompts the user for a file location. It will attempt to default
-	 * the view to the save-file location for Imperator: Rome save files.
+	 * Prompts the user for a file location. It will attempt to default the view to
+	 * the save-file location for Imperator: Rome save files.
 	 * 
 	 * @return {@link File} pointing to a file that may or may not exist.
 	 */
@@ -144,10 +595,8 @@ public class Controller {
 		return files != null && files.length > 0 ? files[0] : null;
 	}
 
-
 	/**
-	 * Retrieves all the cultures represented by the pops in the given
-	 * nation.
+	 * Retrieves all the cultures represented by the pops in the given nation.
 	 * 
 	 * @param nationID Nation from which to search for cultures.
 	 * @return Cultures of pops in the nation.
@@ -164,7 +613,6 @@ public class Controller {
 		return cultures;
 	}
 
-
 	private String getNationID() {
 		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
 		if (nation_id == null || nation_id.trim().equals("")) {
@@ -173,14 +621,12 @@ public class Controller {
 			return nation_id.trim();
 	}
 
-
 	/**
-	 * Gets the Pop IDs of every pop in a province owned by the specified
-	 * nation.
+	 * Gets the Pop IDs of every pop in a province owned by the specified nation.
 	 * 
 	 * @param nation_id ID of the nation we want to get pops from.
-	 * @return {@link List} of {@link DataNode}s representing the IDs of
-	 *         the owned pops.
+	 * @return {@link List} of {@link DataNode}s representing the IDs of the owned
+	 *         pops.
 	 */
 	private List<DataNode> getOwnedPops(Object nation_id) {
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
@@ -195,7 +641,6 @@ public class Controller {
 		return pop_ids;
 	}
 
-
 	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
 		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
 		List<DataNode> pops_return = new LinkedList<DataNode>();
@@ -209,13 +654,10 @@ public class Controller {
 		return pops_return;
 	}
 
-
 	/**
 	 * 
-	 * @param province {@link DataNode} of the province to retrieve the
-	 *                 pops from.
-	 * @return {@link List List<DataNode>} of all pops in the given
-	 *         province.
+	 * @param province {@link DataNode} of the province to retrieve the pops from.
+	 * @return {@link List List<DataNode>} of all pops in the given province.
 	 */
 	private List<DataNode> getPops(DataNode province) {
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
@@ -224,7 +666,6 @@ public class Controller {
 
 		return pop_ids;
 	}
-
 
 	/**
 	 * 
@@ -240,7 +681,6 @@ public class Controller {
 		return pop_ids;
 	}
 
-
 	/**
 	 * Gets a population ratio from the user.
 	 * 
@@ -250,30 +690,39 @@ public class Controller {
 		return (new PopsRatioDialog()).runDialog();
 	}
 
-
 	/**
 	 * Returns the Primary Culture of the provided nation ID.
 	 * 
 	 * @param nation_id ID of the nation to get the primary culture from.
-	 * @return {@link String} of the primary culture.
+	 * @return {@link String} of the primary culture, or <code>null</code> if
+	 *         retrieve failed.
 	 */
 	private String getPrimaryCulture(String nation_id) {
-		return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
-				.getNode(0).getKey();
+		try {
+			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
+					.getNode(0).getKey();
+		} catch (NullPointerException e) {
+			Log.error(null, "Failed Retrieval.", m_editor);
+			return null;
+		}
 	}
-
 
 	/**
 	 * Returns the Primary Religion of the provided nation ID.
 	 * 
 	 * @param nation_id ID of the nation to get the primary religion from.
-	 * @return {@link String} of the primary religion.
+	 * @return {@link String} of the primary religion, or <code>null</code> if
+	 *         retrieve failed.
 	 */
 	private String getPrimaryReligion(String nation_id) {
-		return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" }).getNode(0)
-				.getKey();
+		try {
+			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" })
+					.getNode(0).getKey();
+		} catch (NullPointerException e) {
+			Log.error(null, "Failed Retrieval.", m_editor);
+			return null;
+		}
 	}
-
 
 	private String getProvinceID() {
 		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
@@ -283,10 +732,8 @@ public class Controller {
 			return province_id.trim();
 	}
 
-
 	/**
-	 * Loads the Imperator: Rome save data from the provided file into a
-	 * DataNode.
+	 * Loads the Imperator: Rome save data from the provided file into a DataNode.
 	 * 
 	 * @param save_game {@link File} to load data from.
 	 * @return {@link DataNode} containing the loaded data.
@@ -331,7 +778,6 @@ public class Controller {
 			line = line.trim();
 			boolean f_firstIteration = true;
 			while (line != null && !line.equals("")) {
-
 
 				// Get First Operator, Ignoring Quoted Strings
 				int first = -1;
@@ -457,23 +903,20 @@ public class Controller {
 		return data_root;
 	}
 
-
 	/**
-	 * Saves the provided data to a file at the provided location in a
-	 * format readable by Imperator: Rome.
+	 * Saves the provided data to a file at the provided location in a format
+	 * readable by Imperator: Rome.
 	 * 
-	 * @param root          The root {@link DataNode} to use, where all
-	 *                      the nested DataNodes are used to build the
-	 *                      save file.
-	 * @param save_location {@link File} pointing to where the file should
-	 *                      be saved.
+	 * @param root          The root {@link DataNode} to use, where all the nested
+	 *                      DataNodes are used to build the save file.
+	 * @param save_location {@link File} pointing to where the file should be saved.
 	 * @throws FileNotFoundException
 	 */
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
 		Log.info("Saving Data...");
 		Log.debug("Running PrintWriter");
 		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
-		Log.debug("Progress Bar Status:\n" + progress_bar.statusString());
+		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
 		progress_bar.setTitle("Saving Data...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.bar().setValue(0);
@@ -490,418 +933,4 @@ public class Controller {
 		Log.debug("PrintWriter Complete");
 		Log.info("Save Complete");
 	}
-
-
-	/**
-	 * Converts all pops of a user-provided nation ID to the primary
-	 * culture of that nation.
-	 */
-	public void cheatAssimilatePops() {
-		Log.info("assimilatePopsCheat");
-
-		String nation_id = null, province_id = null;
-
-		// Nation ID or by Province ID?
-		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
-				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
-		if (n_or_p != null) {
-			if (n_or_p.getValue().equals("NationID"))
-				nation_id = getNationID();
-			else
-				province_id = getProvinceID();
-
-			nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
-					: nation_id;
-		}
-
-		// Nothing Entered.
-		if (nation_id == null) {
-			Log.warn("cheatAssimilatePops: Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
-			return;
-		}
-
-		// Get Culture
-		String culture = getPrimaryCulture(nation_id);
-
-		// Get Pops
-		Log.info("cheatAssimilatePops: Getting Pops...");
-		List<DataNode> pop_ids_to_convert;
-		if (province_id == null)
-			pop_ids_to_convert = getOwnedPops(nation_id);
-		else
-			pop_ids_to_convert = getPopsFromProvince(province_id);
-
-
-		// Convert Pops
-		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
-		for (DataNode pop : population)
-			pop.find("culture").getNode(0).setKey(culture);
-
-		Log.info("cheatAssimilatePops: Done.");
-		Log.showMessageDialog("Cheat Complete");
-	}
-
-
-	/**
-	 * 
-	 * 
-	 */
-	public void cheatConvertPops() {
-		Log.info("convertPopsCheat");
-
-		String nation_id = null, province_id = null;
-
-		// Nation ID or by Province ID?
-		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
-				"Assimilate by NationID or by Individual Provinces?", new String[] { "NationID", "ProvinceID" }, 0));
-		if (n_or_p != null) {
-			if (n_or_p.getValue().equals("NationID"))
-				nation_id = getNationID();
-			else
-				province_id = getProvinceID();
-
-			nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
-					: nation_id;
-		}
-
-		// Nothing Entered.
-		if (nation_id == null) {
-			Log.warn("cheatConvertPops: Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
-			return;
-		}
-
-		// Get Religion
-		String religion = getPrimaryReligion(nation_id);
-
-		// Get Pops
-		Log.info("cheatConvertPops: Getting Pops...");
-		List<DataNode> pop_ids_to_convert;
-		if (province_id == null)
-			pop_ids_to_convert = getOwnedPops(nation_id);
-		else
-			pop_ids_to_convert = getPopsFromProvince(province_id);
-
-		// Convert Pops
-		List<DataNode> population = getPopObjectsFromIDs(pop_ids_to_convert);
-		for (DataNode pop : population)
-			pop.find("religion").getNode(0).setKey(religion);
-
-		Log.info("cheatConvertPops: Done.");
-		Log.showMessageDialog("Cheat Complete");
-	}
-
-
-	/**
-	 * Generates a population and spreads it among the owned provinces of
-	 * a particular nation, preferring to fill the lowest-population
-	 * provinces first.
-	 */
-	public void cheatGeneratePops() {
-		Log.info("generatePopsCheat");
-
-		String str_response;
-		int int_response;
-
-		String nation_id, culture, religion;
-		int pop_number;
-		int[] ratio;
-
-		// Nation ID
-		nation_id = getNationID();
-		if (nation_id == null) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
-			return;
-		}
-
-		// # Pops to Create
-		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
-		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
-			return;
-		} else
-			pop_number = Integer.valueOf(str_response.trim());
-
-		// Ratio of Pops
-		ratio = getPopTypeRatio();
-
-		// Culture
-		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Culture?");
-		if (int_response == JOptionPane.YES_OPTION)
-			culture = getPrimaryCulture(nation_id);
-		else {
-			str_response = JOptionPane.showInputDialog("Enter Culture: ");
-			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug("Null Response. Leaving function");
-				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
-				return;
-			} else
-				culture = str_response.trim();
-		}
-
-		// Religion
-		int_response = JOptionPane.showConfirmDialog(m_editor, "Use Primary Religion?");
-		if (int_response == JOptionPane.YES_OPTION)
-			religion = getPrimaryReligion(nation_id);
-		else {
-			str_response = JOptionPane.showInputDialog("Enter Religion: ");
-			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug("Null Response. Leaving function");
-				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
-				return;
-			} else
-				religion = str_response.trim();
-		}
-
-		////// Generate Pops //////
-		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
-
-		// Put owned Provinces into Map -- Do this first to determine if
-		// population can be assigned before creating the pops.
-		DataNode provinces = m_data.find("provinces");
-		Map<DataNode, Float> map_populations = new HashMap<DataNode, Float>();
-		for (DataNode province : provinces.getNodes()) {
-			DataNode owner = province.find("owner");
-			if (owner != null && owner.getKeyValue().equals(nation_id)) {
-				int pop_count = province.queryCount("pop");
-				// TODO test province rank weighting system
-				if (!province.find("province_rank").getKeyValue().equals("settlement"))
-					pop_count /= 4.4f;
-				map_populations.put(province, (float) pop_count);
-			}
-		}
-
-		if (map_populations.size() <= 0) {
-			Log.warn(null, "Generate Pops Cheat:\nNation doesn't have any provinces. Leaving function.", m_editor);
-			return;
-		}
-
-
-		// Get existing population
-		DataNode population = m_data.find("population", "population");
-		List<DataNode> pops = population.getNodes();
-
-		// First unused pop ID;
-		int start_pop = pops.get(pops.size() - 1).getKeyAsInt() + 1;
-
-		// Generate Pops
-		int ratio_sum = Arrays.stream(ratio).sum(); // Sum of weights
-		for (int i = 0; i < pop_number; i++) {
-			DataNode newpop = new DataNode(String.valueOf(start_pop + i), true);
-
-			// Type
-			int step = i % ratio_sum;
-			String type = "";
-			for (int i2 = 0; i2 < ratio.length; i2++) {
-				step -= ratio[i2];
-				if (step <= 0) {
-					type = TYPES[i2];
-					break;
-				}
-			}
-			newpop.addNode(new DataNode("type", new DataNode(type), false));
-
-			// Culture and Religion
-			newpop.addNode(new DataNode("culture", new DataNode(culture), false));
-			newpop.addNode(new DataNode("religion", new DataNode(religion), false));
-
-			// Add to population
-			population.addNode(newpop);
-		}
-
-		////// Assign Pops to Provinces //////
-
-		// Assign to Lowest Pop Provinces
-		for (int i = start_pop; i < start_pop + pop_number; i++) {
-			map_populations = sortByValue(map_populations, true); // Sort Map
-			DataNode province = (DataNode) map_populations.keySet().toArray()[0]; // Get First (lowest pop count)
-			Float count = map_populations.get(province);
-			province.addNode(new DataNode("pop", new DataNode(i + ""), false)); // Add pop
-			// TODO test province rank weighting system
-			map_populations.put(province,
-					count + ((!province.find("province_rank").getKeyValue().equals("settlement")) ? 1f / 4.4f : 1));
-		}
-
-		Log.showMessageDialog("Cheat Complete");
-	}
-
-
-	/**
-	 * Will merge two cultures in a nation. The culture to be merged
-	 * (converted) to and from will be defined by the user.
-	 */
-	public void cheatMergeCultures() {
-		String nation_id, culture_from, culture_to;
-		Object[] nationCultures;
-
-		nation_id = getNationID();
-		if (nation_id == null) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
-			return;
-		}
-
-		nationCultures = getNationCultures(nation_id).toArray();
-		// Ensure there are enough cultures to merge.
-		if (nationCultures.length < 2) {
-			Log.showMessageDialog(m_editor, "Not enough cultures to merge.");
-			return;
-		}
-
-		try {
-			culture_from = KDialogs
-					.showInputListDialog(m_editor,
-							new ListSelection("Select culture to convert from:", nationCultures, 0))
-					.getValue().toString();
-			// Don't allow user to pick the same culture to convert from and to.
-			nationCultures = KArrays.remove(nationCultures, culture_from);
-			culture_to = KDialogs
-					.showInputListDialog(m_editor,
-							new ListSelection("Select culture to convert to:", nationCultures,
-									KArrays.indexOf(nationCultures, getPrimaryCulture(nation_id))))
-					.getValue().toString();
-		} catch (NullPointerException e) {
-			Log.warn("Null Response, Leaving Function");
-			Log.showMessageDialog(m_editor, "No Entry, Quiting Function.");
-			return;
-		}
-		// Get Pops
-		List<DataNode> pops_to_convert = getPopObjectsFromIDs(getOwnedPops(nation_id));
-
-		// Iterate each pop, convert cultures.
-		for (DataNode pop : pops_to_convert) {
-			DataNode culture = pop.find("culture").getNode(0);
-			if (culture.getKey().equals(culture_from))
-				culture.setKey(culture_to);
-		}
-
-		Log.showMessageDialog("Cheat Complete");
-	}
-
-
-	public void cheatModSubjects() {
-		// Subject Types
-		final String[] subject_types = { "\"feudatory\"", "\"satrapy\"", "\"client_state\"", "\"vassal_tribe\"",
-				"\"tributary\"", "\"subject_colony\"", "\"subject_mercenary_city_state\"",
-				"\"subject_league_city_state\"" };
-
-		// Nation ID
-		String nation_id = getNationID();
-		if (nation_id == null) {
-			Log.info(null, "No Entry. Leaving function", m_editor);
-			return;
-		}
-
-		// Get Dependencies
-		List<DataNode> diplomacy = new LinkedList<DataNode>(m_data.find("diplomacy").getNodes());
-		List<DataNode> dependencies = new LinkedList<DataNode>();
-		for (DataNode n : diplomacy)
-			if (n.getKey().equals("dependency") && n.find("first").find(nation_id) != null)
-				dependencies.add(n);
-
-		// No Subjects
-		if (dependencies.size() <= 0) {
-			JOptionPane.showMessageDialog(m_editor, "No Subjects To Modify");
-			return;
-		}
-
-		// Get Cheat Option
-		String[] choices = { "Change All Subjects to Type...", "Change All Subjects of Type A to Type B...",
-				"Modifiy Individually." };
-		String input = (String) JOptionPane.showInputDialog(m_editor, "Choose Mod Function", "Choose Mod Function",
-				JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
-		int cheat_option = -1;
-		for (int i = 0; i < choices.length; i++)
-			if (choices[i].equals(input)) {
-				cheat_option = i;
-				break;
-			}
-
-		if (cheat_option < 0) {
-			Log.info(null, "No Choice Selected. Leaving Function", m_editor);
-			return;
-		}
-
-		// Change All To...
-		if (cheat_option == 0) {
-			String type = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
-					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
-			for (DataNode n : dependencies)
-				n.find("subject_type").getNode(0).setKey(type);
-		}
-		// Change All Type A to Type B...
-		else if (cheat_option == 1) {
-			String typeA = (String) JOptionPane.showInputDialog(m_editor, "Select Type of Subjects to Change",
-					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
-			String typeB = (String) JOptionPane.showInputDialog(m_editor, "Select Type to Change Subjects To",
-					"Select Type", JOptionPane.QUESTION_MESSAGE, null, subject_types, subject_types[0]);
-
-			for (DataNode n : dependencies) {
-				DataNode st = n.find("subject_type").getNode(0);
-				if (st.getKey().equals(typeA))
-					n.find("subject_type").getNode(0).setKey(typeB);
-			}
-		}
-		// Modify Individually...
-		else if (cheat_option == 2) {
-			InputListDialog.ListSelection[] list_selections = new InputListDialog.ListSelection[dependencies.size()];
-			for (int i = 0; i < list_selections.length; i++) {
-				DataNode dependency = dependencies.get(i);
-				Object message = dependency.find("second").getNode(0).getKey();
-				String str_init = dependency.find("subject_type").getNode(0).getKey();
-				int initial_value = KArrays.indexOf(subject_types, str_init);
-				list_selections[i] = new InputListDialog.ListSelection(message, subject_types, initial_value);
-			}
-
-			// Show modification window and get results.
-			list_selections = KDialogs.showInputListDialog(m_editor, list_selections);
-			if (list_selections == null) {
-				Log.info(null, "Canceled Cheat.", m_editor);
-				return;
-			}
-
-			// Apply Results
-			for (int i = 0; i < list_selections.length; i++) {
-				DataNode dep_subject_type = dependencies.get(i).find("subject_type").getNode(0);
-				dep_subject_type.setKey(list_selections[i].getValue().toString());
-			}
-		}
-
-		Log.showMessageDialog(m_editor, "Cheat Complete");
-	}
-
-
-	/**
-	 * Saves the data to a user-specified file in a format readable by
-	 * Imperator: Rome.
-	 */
-	public void save() {
-		Log.info("Saving File:");
-		try {
-			File save_location = getFile();
-			Log.info("Save File: " + save_location.getAbsolutePath());
-			saveData(m_data, save_location);
-		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
-			e.printStackTrace();
-		}
-		Log.info("Save Complete");
-	}
-
-
-	/**
-	 * Will open a dialog to edit various values of a specified province.
-	 */
-	public void cheatEditProvince() {
-		String province_id = getProvinceID();
-		// DataNode province = m_data.find("provinces",
-		// province_id.toString());
-		DataNode province = null;
-		ProvinceEditorDialog province_editor = new ProvinceEditorDialog(province);
-		province_editor.runDialog();
-	}
 }
-

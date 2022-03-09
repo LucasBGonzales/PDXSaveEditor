@@ -93,7 +93,7 @@ public class Controller {
 
 		// Nation ID or by Province ID?
 		ListSelection n_or_p = KDialogs.showInputListDialog(m_editor, new ListSelection(
-				"Assimilate by Nation ID or by Individual Provinces?", new String[] { "Nation D", "ProvinceID" }, 0));
+				"Assimilate by Nation ID or by Individual Provinces?", new String[] { "Nation ID", "ProvinceID" }, 0));
 		if (n_or_p != null) {
 			if (n_or_p.getValue().equals("Nation ID"))
 				nation_id = getNationID();
@@ -528,10 +528,14 @@ public class Controller {
 		Log.info("Saving File:");
 		try {
 			File save_location = getFile();
+			if (save_location == null) {
+				Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+				return;
+			}
 			Log.info("Save File: " + save_location.getAbsolutePath());
 			saveData(m_data, save_location);
 		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
+			Log.error(null, e.getMessage(), m_editor);
 			e.printStackTrace();
 		}
 		Log.info("Save Complete");

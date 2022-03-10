@@ -54,9 +54,11 @@ public class Controller {
 		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
 	}
 
+
 	private DataNode m_data;
 
 	private EditorGUI m_editor;
+
 
 	/**
 	 * Will load the data from user-provided save file, then initialize the Editor
@@ -81,6 +83,7 @@ public class Controller {
 			m_data = new DataNode("Empty");
 		m_editor = new EditorGUI(m_data, this);
 	}
+
 
 	/**
 	 * Converts all pops of a user-provided nation ID to the primary culture of that
@@ -140,6 +143,7 @@ public class Controller {
 		Log.showMessageDialog("Cheat Complete");
 	}
 
+
 	/**
 	 * 
 	 * 
@@ -198,17 +202,17 @@ public class Controller {
 		Log.showMessageDialog("Cheat Complete");
 	}
 
+
 	/**
 	 * Will open a dialog to edit various values of a specified province.
 	 */
 	public void cheatEditProvince() {
-		// String province_id = getProvinceID();
-		// DataNode province = m_data.find("provinces",
-		// province_id.toString());
-		DataNode province = null;
+		String province_id = getProvinceID();
+		DataNode province = m_data.find("provinces", province_id.toString());
 		ProvinceEditorDialog province_editor = new ProvinceEditorDialog(province);
 		province_editor.runDialog();
 	}
+
 
 	/**
 	 * Generates a population and spreads it among the owned provinces of a
@@ -341,6 +345,7 @@ public class Controller {
 		Log.showMessageDialog("Cheat Complete");
 	}
 
+
 	/**
 	 * Will merge two cultures in a nation. The culture to be merged (converted) to
 	 * and from will be defined by the user.
@@ -392,6 +397,7 @@ public class Controller {
 
 		Log.showMessageDialog("Cheat Complete");
 	}
+
 
 	public void cheatModSubjects() {
 		// Subject Types
@@ -484,6 +490,7 @@ public class Controller {
 		Log.showMessageDialog(m_editor, "Cheat Complete");
 	}
 
+
 	/**
 	 * Gets a Nation ID from the Nation Tag.
 	 * 
@@ -509,6 +516,7 @@ public class Controller {
 		return null;
 	}
 
+
 	/**
 	 * Determines if the nation ID is valid.
 	 * 
@@ -519,6 +527,7 @@ public class Controller {
 	public boolean isValidNationID(String nation_id) {
 		return m_data.find("country", "country_database", nation_id) != null;
 	}
+
 
 	/**
 	 * Saves the data to a user-specified file in a format readable by Imperator:
@@ -541,6 +550,7 @@ public class Controller {
 		Log.info("Save Complete");
 	}
 
+
 	/**
 	 * Partner function for {@link #saveData(DataNode, File) saveData} that
 	 * primarily retrieves and writes data to a PrintWriter stream. It is recursive,
@@ -550,7 +560,8 @@ public class Controller {
 	 * @param stream {@link PrintWriter} to write data to.
 	 */
 	private void getData(DataNode node, PrintWriter stream) {
-		String output = node.getKey();
+		String tab = (new String(new char[node.getDepth()])).replace("\0", "\t");
+		String output = tab + node.getKey();
 
 		// Determine Operator
 		if (node.isList()) {
@@ -576,9 +587,14 @@ public class Controller {
 
 		}
 		if (node.isList()) {
-			stream.print(output + " } \n");
+			if (tab.length() > 0)
+				tab = tab.substring(0, tab.length() - 0);
+			else
+				tab = "";
+			stream.print(tab + output + " } \n");
 		}
 	}
+
 
 	/**
 	 * Prompts the user for a file location. It will attempt to default the view to
@@ -599,6 +615,7 @@ public class Controller {
 		return files != null && files.length > 0 ? files[0] : null;
 	}
 
+
 	/**
 	 * Retrieves all the cultures represented by the pops in the given nation.
 	 * 
@@ -617,6 +634,7 @@ public class Controller {
 		return cultures;
 	}
 
+
 	private String getNationID() {
 		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
 		if (nation_id == null || nation_id.trim().equals("")) {
@@ -624,6 +642,7 @@ public class Controller {
 		} else
 			return nation_id.trim();
 	}
+
 
 	/**
 	 * Gets the Pop IDs of every pop in a province owned by the specified nation.
@@ -645,6 +664,7 @@ public class Controller {
 		return pop_ids;
 	}
 
+
 	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
 		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
 		List<DataNode> pops_return = new LinkedList<DataNode>();
@@ -658,6 +678,7 @@ public class Controller {
 		return pops_return;
 	}
 
+
 	/**
 	 * 
 	 * @param province {@link DataNode} of the province to retrieve the pops from.
@@ -670,6 +691,7 @@ public class Controller {
 
 		return pop_ids;
 	}
+
 
 	/**
 	 * 
@@ -685,6 +707,7 @@ public class Controller {
 		return pop_ids;
 	}
 
+
 	/**
 	 * Gets a population ratio from the user.
 	 * 
@@ -693,6 +716,7 @@ public class Controller {
 	private int[] getPopTypeRatio() {
 		return (new PopsRatioDialog()).runDialog();
 	}
+
 
 	/**
 	 * Returns the Primary Culture of the provided nation ID.
@@ -711,6 +735,7 @@ public class Controller {
 		}
 	}
 
+
 	/**
 	 * Returns the Primary Religion of the provided nation ID.
 	 * 
@@ -728,6 +753,7 @@ public class Controller {
 		}
 	}
 
+
 	private String getProvinceID() {
 		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
 		if (province_id == null || province_id.trim().equals("")) {
@@ -735,6 +761,7 @@ public class Controller {
 		} else
 			return province_id.trim();
 	}
+
 
 	/**
 	 * Loads the Imperator: Rome save data from the provided file into a DataNode.
@@ -906,6 +933,7 @@ public class Controller {
 
 		return data_root;
 	}
+
 
 	/**
 	 * Saves the provided data to a file at the provided location in a format

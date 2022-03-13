@@ -208,6 +208,11 @@ public class Controller {
 	 */
 	public void cheatEditProvince() {
 		String province_id = getProvinceID();
+		if(province_id==null)
+		{
+			Log.warn(null, "No Province ID Selected. Exiting Function.", m_editor);
+			return;
+		}
 		DataNode province = m_data.find("provinces", province_id.toString());
 		ProvinceEditorDialog province_editor = new ProvinceEditorDialog(province);
 		province_editor.runDialog();

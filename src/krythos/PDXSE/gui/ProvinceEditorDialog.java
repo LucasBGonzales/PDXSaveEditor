@@ -223,7 +223,7 @@ public class ProvinceEditorDialog extends JDialog {
 			// Remove existing claims, add the claims in the editor.
 			province.removeNode("claim", true);
 			for (int i = 0; i < cbxClaims.getItemCount(); i++)
-				province.addNode(new DataNode("claim", Arrays.asList(new DataNode(cbxClaims.getItemAt(i).toString()))));
+				province.addNode(new DataNode("claim", new DataNode(cbxClaims.getItemAt(i).toString()), false));
 
 		}
 		close();

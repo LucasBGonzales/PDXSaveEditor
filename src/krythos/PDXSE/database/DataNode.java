@@ -138,20 +138,6 @@ public class DataNode {
 
 
 	/**
-	 * Returns <code>true</code> if {@code obj instanceof DataNode},
-	 * {@link String#equals getKey().equals(obj.getKey())},
-	 * {@link List#equals
-	 * getNodes().equals(obj.getNodes())} and
-	 * {@code isList() == obj.isList()}.
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		return obj instanceof DataNode && ((DataNode) obj).getKey().equals(this.getKey())
-				&& ((DataNode) obj).getNodes().equals(this.getNodes()) && ((DataNode) obj).isList() == this.isList();
-	}
-
-
-	/**
 	 * Finds the {@link DataNode} from the <code>path</code>, if it
 	 * exists. If the
 	 * size of <code>path</code> is 0, this DataNode is returned.
@@ -305,6 +291,23 @@ public class DataNode {
 	 */
 	public DataNode getParent() {
 		return m_parent;
+	}
+
+
+	/**
+	 * Returns the index of a child {@link DataNode node} in this
+	 * {@link DataNode}. If the child doesn't exist, {@code -1} is
+	 * returned.
+	 * 
+	 * @param node
+	 * @return Index of child node, or -1 if the child doesn't exist in
+	 *         this node.
+	 */
+	public int indexOf(DataNode node) {
+		for (int i = 0; i < m_nodes.size(); i++)
+			if (m_nodes.get(i).equals(node))
+				return i;
+		return -1;
 	}
 
 
@@ -532,5 +535,15 @@ public class DataNode {
 	 */
 	private int getDepth(int count) {
 		return m_parent != null ? m_parent.getDepth(count + 1) : count;
+	}
+
+
+	/**
+	 * Counts the number of children in this node.
+	 * 
+	 * @return
+	 */
+	public int countChildren() {
+		return m_nodes.size();
 	}
 }

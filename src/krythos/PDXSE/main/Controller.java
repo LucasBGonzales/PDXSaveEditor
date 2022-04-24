@@ -33,6 +33,49 @@ import krythos.util.swing.dialogs.InputListDialog;
 import krythos.util.swing.dialogs.InputListDialog.ListSelection;
 
 public class Controller {
+	private DataNode m_data;
+
+
+	private EditorGUI m_editor;
+
+	private int m_saveVersion;
+	private boolean f_save_readable;
+
+
+	/**
+	 * Will load the data from user-provided save file, then initialize
+	 * the Editor
+	 * GUI. If the user doesn't select a file, then the GUI will be loaded
+	 * with no
+	 * data tree.
+	 */
+	public Controller(boolean load_files, int load_data_version, int save_data_version, boolean save_readable) {
+		m_data = null;
+		Log.info("Load Data Version: " + load_data_version);
+		Log.info("Save Data Version: " + load_data_version);
+		Log.info("Save Readable: " + save_readable);
+		m_saveVersion = save_data_version;
+		f_save_readable = save_readable;
+		if (load_files) {
+			try {
+				File f = getFile();
+				if (f == null)
+					load_files = false;
+				else if (load_data_version == 0)
+					m_data = loadData(f);
+				else if (load_data_version == 1)
+					m_data = loadData_old(f);
+			} catch (IOException e1) {
+				Log.error(this, e1.getMessage());
+				e1.printStackTrace();
+			}
+		}
+		if (!load_files)
+			m_data = new DataNode("Empty");
+		m_editor = new EditorGUI(m_data, this);
+	}
+
+
 	/**
 	 * Sorts a Map in ascending or descending order based on the values of
 	 * the
@@ -56,35 +99,685 @@ public class Controller {
 	}
 
 
-	private DataNode m_data;
+	/**
+	 * Partner function for {@link #saveData_old(DataNode, File) saveData}
+	 * that
+	 * primarily retrieves and writes data to a PrintWriter stream. It is
+	 * recursive,
+	 * calling itself for each nested within the provided
+	 * {@link DataNode}.
+	 * 
+	 * @param node   {@link DataNode} to write data from.
+	 * @param stream {@link PrintWriter} to write data to.
+	 */
+	private void getData(DataNode node, PrintWriter stream) {
+		String tab = (new String(new char[node.getDepth()])).replace("\0", "\t");
+		String output = tab + node.getKey();
 
-	private EditorGUI m_editor;
+		// Determine Operator
+		if (node.isList()) {
+			if (!node.getKey().equals(""))
+				output += "=";
+			output += "{\n";
+		} else if (node.getNodes().size() == 1)
+			output += "=";
+
+		stream.print(output);
+		output = "";
+
+		// Build Output
+		for (DataNode n : node.getNodes()) {
+			// Is Value
+			if (n.getNodes().size() <= 0 && !n.isList()) {
+				output = n.getKey() + (node.getNodes().size() == 1 ? "\n" : " ");
+
+				stream.print(output);
+				output = "";
+			} else // Is Key-List
+				getData(n, stream);
+
+		}
+		if (node.isList()) {
+			if (tab.length() > 0)
+				tab = tab.substring(0, tab.length() - 0);
+			else
+				tab = "";
+			stream.print(tab + output + " } \n");
+		}
+	}
 
 
 	/**
-	 * Will load the data from user-provided save file, then initialize
-	 * the Editor
-	 * GUI. If the user doesn't select a file, then the GUI will be loaded
-	 * with no
-	 * data tree.
+	 * Prompts the user for a file location. It will attempt to default
+	 * the view to
+	 * the save-file location for Imperator: Rome save files.
+	 * 
+	 * @return {@link File} pointing to a file that may or may not exist.
 	 */
-	public Controller(boolean load_files) {
-		m_data = null;
-		if (load_files) {
-			try {
-				File f = getFile();
-				if (f == null)
-					load_files = false;
-				else
-					m_data = loadData_new(f);// m_data = loadData(f);
-			} catch (IOException e1) {
-				Log.error(this, e1.getMessage());
-				e1.printStackTrace();
-			}
+	private File getFile() {
+		File def_file = null;
+		if (SystemUtils.isWindows())
+			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
+					+ "\\Paradox Interactive\\Imperator\\save games");
+		else if (SystemUtils.isLinux())
+			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
+					+ "/.local/share/Paradox Interactive/Imperator/save games/");
+		Log.info("Filename: " + def_file.getPath());
+		File[] files = KDialogs.fileChooser(false, null, def_file);
+		return files != null && files.length > 0 ? files[0] : null;
+	}
+
+
+	/**
+	 * Retrieves all the cultures represented by the pops in the given
+	 * nation.
+	 * 
+	 * @param nationID Nation from which to search for cultures.
+	 * @return Cultures of pops in the nation.
+	 */
+	private List<String> getNationCultures(Object nationID) {
+		List<String> cultures = new LinkedList<String>();
+		List<DataNode> pops = getPopObjectsFromIDs(getOwnedPops(nationID));
+		for (DataNode pop : pops) {
+			String culture = pop.find("culture").getNode(0).getKey();
+			if (!cultures.contains(culture))
+				cultures.add(culture);
 		}
-		if (!load_files)
-			m_data = new DataNode("Empty");
-		m_editor = new EditorGUI(m_data, this);
+
+		return cultures;
+	}
+
+
+	private String getNationID() {
+		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
+		if (nation_id == null || nation_id.trim().equals("")) {
+			return null;
+		} else
+			return nation_id.trim();
+	}
+
+
+	/**
+	 * Gets the Pop IDs of every pop in a province owned by the specified
+	 * nation.
+	 * 
+	 * @param nation_id ID of the nation we want to get pops from.
+	 * @return {@link List} of {@link DataNode}s representing the IDs of
+	 *         the owned
+	 *         pops.
+	 */
+	private List<DataNode> getOwnedPops(Object nation_id) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
+
+		DataNode provinces = m_data.find("provinces");
+		for (DataNode province : provinces.getNodes()) {
+			DataNode owner = province.find("owner");
+			if (owner != null && owner.getNode(0).getKey().equals(nation_id.toString()))
+				pop_ids.addAll(getPopsFromProvince(province));
+			;
+		}
+		return pop_ids;
+	}
+
+
+	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
+		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
+		List<DataNode> pops_return = new LinkedList<DataNode>();
+
+		for (DataNode pop : population)
+			for (DataNode id : lstIDs)
+				if (pop.getKey().equals(id.getKey())) {
+					pops_return.add(pop);
+					break;
+				}
+		return pops_return;
+	}
+
+
+	/**
+	 * 
+	 * @param province {@link DataNode} of the province to retrieve the
+	 *                 pops from.
+	 * @return {@link List List<DataNode>} of all pops in the given
+	 *         province.
+	 */
+	private List<DataNode> getPops(DataNode province) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
+		for (DataNode node : province.findAll("pop"))
+			pop_ids.add(node.getNode(0));
+
+		return pop_ids;
+	}
+
+
+	/**
+	 * 
+	 * @param province_id
+	 * @return
+	 */
+	private List<DataNode> getPopsFromProvince(Object province_id) {
+		List<DataNode> pop_ids = new LinkedList<DataNode>();
+
+		DataNode province = m_data.find("provinces", province_id.toString());
+		pop_ids.addAll(getPops(province));
+
+		return pop_ids;
+	}
+
+
+	/**
+	 * Gets a population ratio from the user.
+	 * 
+	 * @return {@link Integer} array representing the desired pop ratio.
+	 */
+	private int[] getPopTypeRatio() {
+		return (new PopsRatioDialog()).runDialog();
+	}
+
+
+	/**
+	 * Returns the Primary Culture of the provided nation ID.
+	 * 
+	 * @param nation_id ID of the nation to get the primary culture from.
+	 * @return {@link String} of the primary culture, or <code>null</code>
+	 *         if
+	 *         retrieve failed.
+	 */
+	private String getPrimaryCulture(String nation_id) {
+		try {
+			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
+					.getNode(0).getKey();
+		} catch (NullPointerException e) {
+			Log.error(null, "Failed Retrieval.", m_editor);
+			return null;
+		}
+	}
+
+
+	/**
+	 * Returns the Primary Religion of the provided nation ID.
+	 * 
+	 * @param nation_id ID of the nation to get the primary religion from.
+	 * @return {@link String} of the primary religion, or
+	 *         <code>null</code> if
+	 *         retrieve failed.
+	 */
+	private String getPrimaryReligion(String nation_id) {
+		try {
+			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" })
+					.getNode(0).getKey();
+		} catch (NullPointerException e) {
+			Log.error(null, "Failed Retrieval.", m_editor);
+			return null;
+		}
+	}
+
+
+	private String getProvinceID() {
+		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
+		if (province_id == null || province_id.trim().equals("")) {
+			return null;
+		} else
+			return province_id.trim();
+	}
+
+
+	private DataNode loadData(File save_game) throws IOException {
+		Log.info("Loading File: " + save_game.getAbsolutePath());
+
+		// ProgressBar
+		int size_kb = (int) (save_game.length() / 1000);
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, size_kb);
+		progress_bar.setTitle("Loading Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.bar().setString("Loading From File...");
+		progress_bar.setVisible(true);
+
+		// Setup BufferedReader
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader(new FileReader(save_game));
+		} catch (FileNotFoundException e) {
+			Log.error(e.getMessage());
+			System.exit(-1);
+		}
+
+		// Collect data
+		DataNode data_root = new DataNode("Root", true);
+		String line;
+		String buffer = "";
+		DataNode working_node = data_root;
+		long char_count = 0;
+		final char EQUALS = '=';
+		final char NEWLIST = '{';
+		final char ENDLIST = '}';
+		final char QUOTE = '"';
+		final char ENDLINE = '\n';
+		final char SPACE = ' ';
+		while ((line = br.readLine()) != null) {
+			char_count += line.length();
+			line = line.trim() + ENDLINE;
+			boolean f_inQuote = false;
+			boolean f_equals = false;
+			boolean f_color = false;
+			for (int i = 0; i < line.length(); i++) {
+				char c = line.charAt(i);
+
+				if (f_color) {
+					if (c == '\t' || c == '\n') {
+						f_color = false;
+						working_node.addNode(new DataNode(buffer.trim(), false));
+						working_node = working_node.getParent();
+						buffer = "";
+						continue;
+					} else {
+						buffer += c;
+						continue;
+					}
+				}
+
+
+				// If in a list, not in a quote and c is a space, then switch it to
+				// ENDLINE as the functionality is the same.
+				if (!f_inQuote && c == SPACE)
+					c = ENDLINE;
+
+				// If we are in a quote, just record to buffer.
+				if (f_inQuote) {
+					buffer += c;
+					// If the character is a quote, then this is the end of the quote.
+					if (c == QUOTE) {
+						f_inQuote = false;
+						working_node.addNode(new DataNode(buffer));
+						buffer = "";
+						// If this was a key-value pair, return to parent.
+						if (f_equals)
+							working_node = working_node.getParent();
+					}
+				} else {
+					switch (c) {
+						case EQUALS:
+							// Add new Node, set it to working node.
+							DataNode newNodeE = new DataNode(buffer.trim());
+							working_node.addNode(newNodeE);
+							working_node = newNodeE;
+
+							// Stupid color formatting means I need a specific case for colors.
+							if (working_node.getKey().indexOf("color") == 0) {
+								f_color = true;
+							} else {
+								// Flip Equals flag, this information is needed for lists and
+								// returning from key-value pairs.
+								f_equals = true;
+							}
+							// Clear buffer
+							buffer = "";
+							break;
+						case NEWLIST:
+							// Named List, adjust working_node.
+							if (f_equals) {
+								working_node.setList(true);
+								f_equals = false;
+							} else {
+								// Unnamed List. Create new list node and set it to working_node.
+								DataNode newNodeNL = new DataNode("", true);
+								working_node.addNode(newNodeNL);
+								working_node = newNodeNL;
+							}
+							break;
+						case ENDLIST:
+							// End of a list, set working_node to working_node's parent.
+							working_node = working_node.getParent();
+							break;
+						case ENDLINE:
+							// If buffer has a value, create a new node and clear buffer.
+							if (buffer.trim().length() > 0) {
+								DataNode newNodeEL = new DataNode(buffer.trim());
+								working_node.addNode(newNodeEL);
+								// If this was a key-value pair, return to parent.
+								if (f_equals)
+									working_node = working_node.getParent();
+							}
+							buffer = "";
+							break;
+						case QUOTE:
+							// If we encounter a quote (and this will only ever be an opening
+							// quote, see if-else before this switch for closing quote), then set
+							// f_inQuote flag to true.
+							f_inQuote = true;
+							buffer += c;
+							break;
+						default:
+							// Add the current character to the buffer, set f_equals = false;
+							buffer += c;
+					}
+				}
+			}
+			progress_bar.setValue((int) (char_count / 1000));
+		}
+		progress_bar.bar().setString("Cleaning Data Nodes...");
+		data_root.autoAssignParent(true);
+
+		progress_bar.setValue(progress_bar.bar().getMaximum());
+		progress_bar.dispose();
+
+		br.close();
+		Log.info("Load File Complete");
+
+		return data_root;
+
+	}
+
+
+	/**
+	 * Loads the Imperator: Rome save data from the provided file into a
+	 * DataNode.
+	 * 
+	 * @param save_game {@link File} to load data from.
+	 * @return {@link DataNode} containing the loaded data.
+	 * @throws IOException
+	 */
+	private DataNode loadData_old(File save_game) throws IOException {
+		Log.info("Loading File (OLD): " + save_game.getAbsolutePath());
+
+		// ProgressBar
+		int size_kb = (int) (save_game.length() / 1000);
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, size_kb);
+		progress_bar.setTitle("Loading Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.bar().setString("Loading From File...");
+		progress_bar.setVisible(true);
+
+		// Setup BufferedReader
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader(new FileReader(save_game));
+		} catch (FileNotFoundException e) {
+			Log.error(e.getMessage());
+			System.exit(0);
+			// e.printStackTrace();
+		}
+
+		// Root data node and dynamic path
+		DataNode data_root = new DataNode("Root", true);
+		List<DataNode> path = new LinkedList<DataNode>();
+		path.add(data_root);
+
+		// Collect data
+		String line;
+		long char_count = 0;
+		char EQUALS = '=';
+		char NEWNODE = '{';
+		char RETURNPATH = '}';
+		char QUOTE = '"';
+		while ((line = br.readLine()) != null) {
+			char_count += line.length();
+			line = line.trim();
+			boolean f_firstIteration = true;
+			while (line != null && !line.equals("")) {
+
+				// Get First Operator, Ignoring Quoted Strings
+				int first = -1;
+				boolean f_inQuote = false;
+				for (int i = 0; i < line.length(); i++) {
+					char character = line.charAt(i);
+					if (character == QUOTE)
+						f_inQuote = !f_inQuote;
+					else if (!f_inQuote && (character == EQUALS || character == NEWNODE || character == RETURNPATH)) {
+						first = i;
+						break;
+					}
+				}
+
+				// This is a line with no operators
+				if (first < 0 && f_firstIteration) {
+					path.get(path.size() - 1).addNode(new DataNode(line, false));
+					line = null;
+
+				} else if (first < 0 && !f_firstIteration) {
+					Log.error("Unhandled Case: First < 0 && !f_firstIteration");
+					System.exit(0);
+				} else { // This is a line with operators
+					// Get the first operator & split it off.
+					char operator = line.charAt(first);
+					String[] parts = line.split(Pattern.quote(operator + ""), 2);
+					parts[0] = parts[0].trim();
+					if (parts.length > 1)
+						parts[1] = parts[1].trim();
+
+					// Has other operators? Ignoring Quoted Strings
+					int second = -1;
+					for (int i = first + 1; i < line.length(); i++) {
+						char character = line.charAt(i);
+						if (character == QUOTE)
+							f_inQuote = !f_inQuote;
+						else if (!f_inQuote
+								&& (character == EQUALS || character == NEWNODE || character == RETURNPATH)) {
+							second = i;
+							break;
+						}
+					}
+					boolean other_operators = second >= 0;
+
+					// First is an EQUALS
+					if (operator == EQUALS) {
+						// Has another operator
+						if (other_operators) {
+							if (line.charAt(second) == RETURNPATH) {
+								DataNode newNode = new DataNode(parts[0], false);
+								path.get(path.size() - 1).addNode(newNode);
+								line = parts[1];
+							} else {
+								DataNode newNode = new DataNode(parts[0], true);
+								path.get(path.size() - 1).addNode(newNode);
+								path.add(newNode);
+								line = parts[1];
+							}
+						} else { // Has no other operator :: Key-Value Pair
+							path.get(path.size() - 1)
+									.addNode(new DataNode(parts[0], new DataNode(parts[1], false), false));
+							line = null;
+						}
+					} else if (operator == NEWNODE) { // First is a NEWNODE
+						// Has another operator
+						if (other_operators) {
+							// Entering a nested node
+							if (line.charAt(second) == NEWNODE) {
+								DataNode newNode = new DataNode("", true);
+								path.get(path.size() - 1).addNode(newNode);
+								path.add(newNode);
+								line = null;
+								// Single-line Nested Node
+							} else if (line.charAt(second) == RETURNPATH) {
+								/*
+								 * DataNode newNode = new DataNode(parts[0]); path.get(path.size() -
+								 * 1).addNode(newNode); path.add(newNode);
+								 */
+								line = parts[1];
+							} else if (line.charAt(second) == EQUALS) {
+								line = parts[1];
+							} else {
+								Log.error("Unhandled Case in Operator==NEWNODE");
+								System.exit(0);
+							}
+						} else {
+							// Stand alone Nested Node
+							if (f_firstIteration) {
+								DataNode newNode = new DataNode("", true);
+								path.get(path.size() - 1).addNode(newNode);
+								path.add(newNode);
+							}
+							line = null;
+						}
+					} else if (operator == RETURNPATH) {
+						// Just exiting a node
+						if (parts[0].equals("")) {
+							path.remove(path.size() - 1);
+							line = null;
+							// Listed Node
+						} else {
+							for (String s : parts[0].trim().split(" "))
+								path.get(path.size() - 1).addNode(new DataNode(s, false));
+							path.remove(path.size() - 1);
+							line = null;
+						}
+					}
+				}
+				f_firstIteration = false;
+			}
+			f_firstIteration = true;
+			progress_bar.setValue((int) (char_count / 1000));
+		}
+		progress_bar.bar().setString("Cleaning Data Nodes...");
+		data_root.autoAssignParent(true);
+
+		progress_bar.setValue(progress_bar.bar().getMaximum());
+		progress_bar.dispose();
+
+		br.close();
+		Log.info("Load File Complete");
+
+		return data_root;
+	}
+
+
+	/**
+	 * Saves the provided data to a file at the provided location in a
+	 * format
+	 * readable by Imperator: Rome.
+	 * 
+	 * @param root          The root {@link DataNode} to use, where all
+	 *                      the nested
+	 *                      DataNodes are used to build the save file.
+	 * @param save_location {@link File} pointing to where the file should
+	 *                      be saved.
+	 * @throws FileNotFoundException
+	 */
+	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
+		Log.info("Saving Data...");
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
+		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
+		progress_bar.setTitle("Saving Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.setVisible(true);
+
+		Log.debug("Running PrintWriter");
+		PrintWriter output = new PrintWriter(save_location);
+
+		DataNode working_node, prev_node;
+		prev_node = root;
+		working_node = root.getNode(0);
+		while (working_node != null) {
+			// Parent, for ease of use.
+			DataNode parent = working_node.getParent();
+
+			// Determine if already printed if so, determine next node and
+			// continue.
+			// // If previous node is a child of working node, already printed.
+			int index = working_node.indexOf(prev_node);
+			if (index >= 0) {
+				// if list, and previous node isn't last in the list, set next child
+				// as working node.
+				if (working_node.isList() && index < working_node.countChildren() - 1) {
+					prev_node = working_node;
+					working_node = working_node.getNode(index + 1);
+				} else if (working_node.isList() && index == working_node.countChildren() - 1) {
+					// If end of list
+					// If end of root nodes, break;
+					if (working_node.equals(root))
+						working_node = null;
+					else {
+						String tab = "";
+						if (f_save_readable)
+							tab = (new String(new char[working_node.getDepth() - 1])).replace("\0", "\t");
+						output.print(tab + "}\n");
+						// Set parent as working node.
+						prev_node = working_node;
+						working_node = working_node.getParent();
+					}
+				} else {
+					// Otherwise set parent as working node.
+					prev_node = working_node;
+					working_node = working_node.getParent();
+				}
+				continue;
+			}
+
+			// Determine Output
+
+			String tab = "";
+			if (parent.isList() && f_save_readable)
+				tab = (new String(new char[working_node.getDepth() - 1])).replace("\0", "\t");
+			String operator = "";
+
+			// Print key
+			output.print(tab + working_node.getKey());
+
+			// Determine operator, if any
+			if (working_node.isList()) { // IF list
+				if (!working_node.getKey().equals("")) // Keyless List
+					operator += "=";
+				operator += "{\n"; // Keyed list
+				if (working_node.isList() && working_node.countChildren() == 0) // List with no children
+					operator += (f_save_readable ? "" : tab) + "}\n";
+			} else if (working_node.getNodes().size() == 1) // Key-value pair
+				operator += "=";
+			else // Standalone value || end of list
+				operator += "\n";
+			output.print(operator);
+
+			progress_bar.increment(working_node.getKey().length());
+			prev_node = working_node;
+			if (working_node.countChildren() > 0)
+				working_node = working_node.getNode(0);
+			else
+				working_node = working_node.getParent();
+
+		}
+
+		output.close();
+		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
+
+		Log.debug("PrintWriter Complete");
+		Log.info("Save Complete");
+	}
+
+
+	/**
+	 * Saves the provided data to a file at the provided location in a
+	 * format
+	 * readable by Imperator: Rome.
+	 * 
+	 * @param root          The root {@link DataNode} to use, where all
+	 *                      the nested
+	 *                      DataNodes are used to build the save file.
+	 * @param save_location {@link File} pointing to where the file should
+	 *                      be saved.
+	 * @throws FileNotFoundException
+	 */
+	private void saveData_old(DataNode root, File save_location) throws FileNotFoundException {
+		Log.info("Saving Data...");
+		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
+		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
+		progress_bar.setTitle("Saving Data...");
+		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		progress_bar.bar().setValue(0);
+		progress_bar.setVisible(true);
+
+		Log.debug("Running PrintWriter");
+		PrintWriter output = new PrintWriter(save_location);
+		for (DataNode n : root.getNodes()) {
+			getData(n, output);
+			output.print("\n");
+		}
+		output.close();
+		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
+
+		Log.debug("PrintWriter Complete");
+		Log.info("Save Complete");
 	}
 
 
@@ -547,598 +1240,37 @@ public class Controller {
 	 * Rome.
 	 */
 	public void save() {
-		Log.info("Saving File:");
-		try {
-			File save_location = getFile();
-			if (save_location == null) {
-				Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
-				return;
+		Log.info("Saving File [version " + m_saveVersion + "]:");
+		if (m_saveVersion == 1) {
+			try {
+				File save_location = getFile();
+				if (save_location == null) {
+					Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+					return;
+				}
+				Log.info("Save File: " + save_location.getAbsolutePath());
+				saveData_old(m_data, save_location);
+			} catch (FileNotFoundException e) {
+				Log.error(null, e.getMessage(), m_editor);
+				e.printStackTrace();
 			}
-			Log.info("Save File: " + save_location.getAbsolutePath());
-			saveData(m_data, save_location);
-		} catch (FileNotFoundException e) {
-			Log.error(null, e.getMessage(), m_editor);
-			e.printStackTrace();
-		}
-		Log.info("Save Complete");
-	}
-
-
-	/**
-	 * Partner function for {@link #saveData(DataNode, File) saveData}
-	 * that
-	 * primarily retrieves and writes data to a PrintWriter stream. It is
-	 * recursive,
-	 * calling itself for each nested within the provided
-	 * {@link DataNode}.
-	 * 
-	 * @param node   {@link DataNode} to write data from.
-	 * @param stream {@link PrintWriter} to write data to.
-	 */
-	private void getData(DataNode node, PrintWriter stream) {
-		String tab = (new String(new char[node.getDepth()])).replace("\0", "\t");
-		String output = tab + node.getKey();
-
-		// Determine Operator
-		if (node.isList()) {
-			if (!node.getKey().equals(""))
-				output += "=";
-			output += "{\n";
-		} else if (node.getNodes().size() == 1)
-			output += "=";
-
-		stream.print(output);
-		output = "";
-
-		// Build Output
-		for (DataNode n : node.getNodes()) {
-			// Is Value
-			if (n.getNodes().size() <= 0 && !n.isList()) {
-				output = n.getKey() + (node.getNodes().size() == 1 ? "\n" : " ");
-
-				stream.print(output);
-				output = "";
-			} else // Is Key-List
-				getData(n, stream);
-
-		}
-		if (node.isList()) {
-			if (tab.length() > 0)
-				tab = tab.substring(0, tab.length() - 0);
-			else
-				tab = "";
-			stream.print(tab + output + " } \n");
-		}
-	}
-
-
-	/**
-	 * Prompts the user for a file location. It will attempt to default
-	 * the view to
-	 * the save-file location for Imperator: Rome save files.
-	 * 
-	 * @return {@link File} pointing to a file that may or may not exist.
-	 */
-	private File getFile() {
-		File def_file = null;
-		if (SystemUtils.isWindows())
-			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
-					+ "\\Paradox Interactive\\Imperator\\save games");
-		else if (SystemUtils.isLinux())
-			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
-					+ "/.local/share/Paradox Interactive/Imperator/save games/");
-		Log.info("Filename: " + def_file.getPath());
-		File[] files = KDialogs.fileChooser(false, null, def_file);
-		return files != null && files.length > 0 ? files[0] : null;
-	}
-
-
-	/**
-	 * Retrieves all the cultures represented by the pops in the given
-	 * nation.
-	 * 
-	 * @param nationID Nation from which to search for cultures.
-	 * @return Cultures of pops in the nation.
-	 */
-	private List<String> getNationCultures(Object nationID) {
-		List<String> cultures = new LinkedList<String>();
-		List<DataNode> pops = getPopObjectsFromIDs(getOwnedPops(nationID));
-		for (DataNode pop : pops) {
-			String culture = pop.find("culture").getNode(0).getKey();
-			if (!cultures.contains(culture))
-				cultures.add(culture);
-		}
-
-		return cultures;
-	}
-
-
-	private String getNationID() {
-		String nation_id = JOptionPane.showInputDialog("Enter Nation ID: ");
-		if (nation_id == null || nation_id.trim().equals("")) {
-			return null;
-		} else
-			return nation_id.trim();
-	}
-
-
-	/**
-	 * Gets the Pop IDs of every pop in a province owned by the specified
-	 * nation.
-	 * 
-	 * @param nation_id ID of the nation we want to get pops from.
-	 * @return {@link List} of {@link DataNode}s representing the IDs of
-	 *         the owned
-	 *         pops.
-	 */
-	private List<DataNode> getOwnedPops(Object nation_id) {
-		List<DataNode> pop_ids = new LinkedList<DataNode>();
-
-		DataNode provinces = m_data.find("provinces");
-		for (DataNode province : provinces.getNodes()) {
-			DataNode owner = province.find("owner");
-			if (owner != null && owner.getNode(0).getKey().equals(nation_id.toString()))
-				pop_ids.addAll(getPopsFromProvince(province));
-			;
-		}
-		return pop_ids;
-	}
-
-
-	private List<DataNode> getPopObjectsFromIDs(List<DataNode> lstIDs) {
-		List<DataNode> population = new LinkedList<DataNode>(m_data.find("population").find("population").getNodes());
-		List<DataNode> pops_return = new LinkedList<DataNode>();
-
-		for (DataNode pop : population)
-			for (DataNode id : lstIDs)
-				if (pop.getKey().equals(id.getKey())) {
-					pops_return.add(pop);
-					break;
+		} else if (m_saveVersion == 0) {
+			try {
+				File save_location = getFile();
+				if (save_location == null) {
+					Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+					return;
 				}
-		return pops_return;
-	}
-
-
-	/**
-	 * 
-	 * @param province {@link DataNode} of the province to retrieve the
-	 *                 pops from.
-	 * @return {@link List List<DataNode>} of all pops in the given
-	 *         province.
-	 */
-	private List<DataNode> getPops(DataNode province) {
-		List<DataNode> pop_ids = new LinkedList<DataNode>();
-		for (DataNode node : province.findAll("pop"))
-			pop_ids.add(node.getNode(0));
-
-		return pop_ids;
-	}
-
-
-	/**
-	 * 
-	 * @param province_id
-	 * @return
-	 */
-	private List<DataNode> getPopsFromProvince(Object province_id) {
-		List<DataNode> pop_ids = new LinkedList<DataNode>();
-
-		DataNode province = m_data.find("provinces", province_id.toString());
-		pop_ids.addAll(getPops(province));
-
-		return pop_ids;
-	}
-
-
-	/**
-	 * Gets a population ratio from the user.
-	 * 
-	 * @return {@link Integer} array representing the desired pop ratio.
-	 */
-	private int[] getPopTypeRatio() {
-		return (new PopsRatioDialog()).runDialog();
-	}
-
-
-	/**
-	 * Returns the Primary Culture of the provided nation ID.
-	 * 
-	 * @param nation_id ID of the nation to get the primary culture from.
-	 * @return {@link String} of the primary culture, or <code>null</code>
-	 *         if
-	 *         retrieve failed.
-	 */
-	private String getPrimaryCulture(String nation_id) {
-		try {
-			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
-					.getNode(0).getKey();
-		} catch (NullPointerException e) {
-			Log.error(null, "Failed Retrieval.", m_editor);
-			return null;
-		}
-	}
-
-
-	/**
-	 * Returns the Primary Religion of the provided nation ID.
-	 * 
-	 * @param nation_id ID of the nation to get the primary religion from.
-	 * @return {@link String} of the primary religion, or
-	 *         <code>null</code> if
-	 *         retrieve failed.
-	 */
-	private String getPrimaryReligion(String nation_id) {
-		try {
-			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" })
-					.getNode(0).getKey();
-		} catch (NullPointerException e) {
-			Log.error(null, "Failed Retrieval.", m_editor);
-			return null;
-		}
-	}
-
-
-	private String getProvinceID() {
-		String province_id = JOptionPane.showInputDialog("Enter Province ID: ");
-		if (province_id == null || province_id.trim().equals("")) {
-			return null;
-		} else
-			return province_id.trim();
-	}
-
-
-	private DataNode loadData_new(File save_game) throws IOException {
-		Log.info("Loading Fule: " + save_game.getAbsolutePath());
-
-		// ProgressBar
-		int size_kb = (int) (save_game.length() / 1000);
-		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, size_kb);
-		progress_bar.setTitle("Loading Data...");
-		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		progress_bar.bar().setValue(0);
-		progress_bar.bar().setString("Loading From File...");
-		progress_bar.setVisible(true);
-
-		// Setup BufferedReader
-		BufferedReader br = null;
-		try {
-			br = new BufferedReader(new FileReader(save_game));
-		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
-			System.exit(-1);
-		}
-
-		// Collect data
-		DataNode data_root = new DataNode("Root", true);
-		String line;
-		String buffer = "";
-		DataNode working_node = data_root;
-		long char_count = 0;
-		final char EQUALS = '=';
-		final char NEWLIST = '{';
-		final char ENDLIST = '}';
-		final char QUOTE = '"';
-		final char ENDLINE = '\n';
-		final char SPACE = ' ';
-		while ((line = br.readLine()) != null) {
-			char_count += line.length();
-			line = line.trim() + ENDLINE;
-			boolean f_inQuote = false;
-			boolean f_equals = false;
-			boolean f_color = false;
-			for (int i = 0; i < line.length(); i++) {
-				char c = line.charAt(i);
-
-				if (f_color) {
-					if (c == '\t' || c == '\n') {
-						f_color = false;
-						working_node.addNode(new DataNode(buffer.trim(), false));
-						working_node = working_node.getParent();
-						buffer = "";
-						continue;
-					} else {
-						buffer += c;
-						continue;
-					}
-				}
-
-
-				// If in a list, not in a quote and c is a space, then switch it to
-				// ENDLINE as the functionality is the same.
-				if (!f_inQuote && c == SPACE)
-					c = ENDLINE;
-
-				// If we are in a quote, just record to buffer.
-				if (f_inQuote) {
-					buffer += c;
-					// If the character is a quote, then this is the end of the quote.
-					if (c == QUOTE) {
-						f_inQuote = false;
-						working_node.addNode(new DataNode(buffer));
-						buffer = "";
-						// If this was a key-value pair, return to parent.
-						if (f_equals)
-							working_node = working_node.getParent();
-					}
-				} else {
-					switch (c) {
-						case EQUALS:
-							// Add new Node, set it to working node.
-							DataNode newNodeE = new DataNode(buffer.trim());
-							working_node.addNode(newNodeE);
-							working_node = newNodeE;
-
-							// Stupid color formatting means I need a specific case for colors.
-							if (working_node.getKey().indexOf("color") == 0) {
-								f_color = true;
-							} else {
-								// Flip Equals flag, this information is needed for lists and
-								// returning from key-value pairs.
-								f_equals = true;
-							}
-							// Clear buffer
-							buffer = "";
-							break;
-						case NEWLIST:
-							// Named List, adjust working_node.
-							if (f_equals) {
-								working_node.setList(true);
-								f_equals = false;
-							} else {
-								// Unnamed List. Create new list node and set it to working_node.
-								DataNode newNodeNL = new DataNode("", true);
-								working_node.addNode(newNodeNL);
-								working_node = newNodeNL;
-							}
-							break;
-						case ENDLIST:
-							// End of a list, set working_node to working_node's parent.
-							working_node = working_node.getParent();
-							break;
-						case ENDLINE:
-							// If buffer has a value, create a new node and clear buffer.
-							if (buffer.trim().length() > 0) {
-								DataNode newNodeEL = new DataNode(buffer.trim());
-								working_node.addNode(newNodeEL);
-								// If this was a key-value pair, return to parent.
-								if (f_equals)
-									working_node = working_node.getParent();
-							}
-							buffer = "";
-							break;
-						case QUOTE:
-							// If we encounter a quote (and this will only ever be an opening
-							// quote, see if-else before this switch for closing quote), then set
-							// f_inQuote flag to true.
-							f_inQuote = true;
-							buffer += c;
-							break;
-						default:
-							// Add the current character to the buffer, set f_equals = false;
-							buffer += c;
-					}
-				}
+				Log.info("Save File: " + save_location.getAbsolutePath());
+				saveData(m_data, save_location);
+			} catch (FileNotFoundException e) {
+				Log.error(null, e.getMessage(), m_editor);
+				e.printStackTrace();
 			}
-			progress_bar.setValue((int) (char_count / 1000));
+		} else {
+			Log.error("Invalid Save Version, Save Unsuccessful.");
+			return;
 		}
-		progress_bar.bar().setString("Cleaning Data Nodes...");
-		data_root.autoAssignParent(true);
-
-		progress_bar.setValue(progress_bar.bar().getMaximum());
-		progress_bar.dispose();
-
-		br.close();
-		Log.info("Load File Complete");
-
-		return data_root;
-
-	}
-
-
-	/**
-	 * Loads the Imperator: Rome save data from the provided file into a
-	 * DataNode.
-	 * 
-	 * @param save_game {@link File} to load data from.
-	 * @return {@link DataNode} containing the loaded data.
-	 * @throws IOException
-	 */
-	private DataNode loadData(File save_game) throws IOException {
-		Log.info("Loading File: " + save_game.getAbsolutePath());
-
-		// ProgressBar
-		int size_kb = (int) (save_game.length() / 1000);
-		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, size_kb);
-		progress_bar.setTitle("Loading Data...");
-		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		progress_bar.bar().setValue(0);
-		progress_bar.bar().setString("Loading From File...");
-		progress_bar.setVisible(true);
-
-		// Setup BufferedReader
-		BufferedReader br = null;
-		try {
-			br = new BufferedReader(new FileReader(save_game));
-		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
-			System.exit(0);
-			// e.printStackTrace();
-		}
-
-		// Root data node and dynamic path
-		DataNode data_root = new DataNode("Root", true);
-		List<DataNode> path = new LinkedList<DataNode>();
-		path.add(data_root);
-
-		// Collect data
-		String line;
-		long char_count = 0;
-		char EQUALS = '=';
-		char NEWNODE = '{';
-		char RETURNPATH = '}';
-		char QUOTE = '"';
-		while ((line = br.readLine()) != null) {
-			char_count += line.length();
-			line = line.trim();
-			boolean f_firstIteration = true;
-			while (line != null && !line.equals("")) {
-
-				// Get First Operator, Ignoring Quoted Strings
-				int first = -1;
-				boolean f_inQuote = false;
-				for (int i = 0; i < line.length(); i++) {
-					char character = line.charAt(i);
-					if (character == QUOTE)
-						f_inQuote = !f_inQuote;
-					else if (!f_inQuote && (character == EQUALS || character == NEWNODE || character == RETURNPATH)) {
-						first = i;
-						break;
-					}
-				}
-
-				// This is a line with no operators
-				if (first < 0 && f_firstIteration) {
-					path.get(path.size() - 1).addNode(new DataNode(line, false));
-					line = null;
-
-				} else if (first < 0 && !f_firstIteration) {
-					Log.error("Unhandled Case: First < 0 && !f_firstIteration");
-					System.exit(0);
-				} else { // This is a line with operators
-					// Get the first operator & split it off.
-					char operator = line.charAt(first);
-					String[] parts = line.split(Pattern.quote(operator + ""), 2);
-					parts[0] = parts[0].trim();
-					if (parts.length > 1)
-						parts[1] = parts[1].trim();
-
-					// Has other operators? Ignoring Quoted Strings
-					int second = -1;
-					for (int i = first + 1; i < line.length(); i++) {
-						char character = line.charAt(i);
-						if (character == QUOTE)
-							f_inQuote = !f_inQuote;
-						else if (!f_inQuote
-								&& (character == EQUALS || character == NEWNODE || character == RETURNPATH)) {
-							second = i;
-							break;
-						}
-					}
-					boolean other_operators = second >= 0;
-
-					// First is an EQUALS
-					if (operator == EQUALS) {
-						// Has another operator
-						if (other_operators) {
-							if (line.charAt(second) == RETURNPATH) {
-								DataNode newNode = new DataNode(parts[0], false);
-								path.get(path.size() - 1).addNode(newNode);
-								line = parts[1];
-							} else {
-								DataNode newNode = new DataNode(parts[0], true);
-								path.get(path.size() - 1).addNode(newNode);
-								path.add(newNode);
-								line = parts[1];
-							}
-						} else { // Has no other operator :: Key-Value Pair
-							path.get(path.size() - 1)
-									.addNode(new DataNode(parts[0], new DataNode(parts[1], false), false));
-							line = null;
-						}
-					} else if (operator == NEWNODE) { // First is a NEWNODE
-						// Has another operator
-						if (other_operators) {
-							// Entering a nested node
-							if (line.charAt(second) == NEWNODE) {
-								DataNode newNode = new DataNode("", true);
-								path.get(path.size() - 1).addNode(newNode);
-								path.add(newNode);
-								line = null;
-								// Single-line Nested Node
-							} else if (line.charAt(second) == RETURNPATH) {
-								/*
-								 * DataNode newNode = new DataNode(parts[0]); path.get(path.size() -
-								 * 1).addNode(newNode); path.add(newNode);
-								 */
-								line = parts[1];
-							} else if (line.charAt(second) == EQUALS) {
-								line = parts[1];
-							} else {
-								Log.error("Unhandled Case in Operator==NEWNODE");
-								System.exit(0);
-							}
-						} else {
-							// Stand alone Nested Node
-							if (f_firstIteration) {
-								DataNode newNode = new DataNode("", true);
-								path.get(path.size() - 1).addNode(newNode);
-								path.add(newNode);
-							}
-							line = null;
-						}
-					} else if (operator == RETURNPATH) {
-						// Just exiting a node
-						if (parts[0].equals("")) {
-							path.remove(path.size() - 1);
-							line = null;
-							// Listed Node
-						} else {
-							for (String s : parts[0].trim().split(" "))
-								path.get(path.size() - 1).addNode(new DataNode(s, false));
-							path.remove(path.size() - 1);
-							line = null;
-						}
-					}
-				}
-				f_firstIteration = false;
-			}
-			f_firstIteration = true;
-			progress_bar.setValue((int) (char_count / 1000));
-		}
-		progress_bar.bar().setString("Cleaning Data Nodes...");
-		data_root.autoAssignParent(true);
-
-		progress_bar.setValue(progress_bar.bar().getMaximum());
-		progress_bar.dispose();
-
-		br.close();
-		Log.info("Load File Complete");
-
-		return data_root;
-	}
-
-
-	/**
-	 * Saves the provided data to a file at the provided location in a
-	 * format
-	 * readable by Imperator: Rome.
-	 * 
-	 * @param root          The root {@link DataNode} to use, where all
-	 *                      the nested
-	 *                      DataNodes are used to build the save file.
-	 * @param save_location {@link File} pointing to where the file should
-	 *                      be saved.
-	 * @throws FileNotFoundException
-	 */
-	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
-		Log.info("Saving Data...");
-		Log.debug("Running PrintWriter");
-		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
-		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
-		progress_bar.setTitle("Saving Data...");
-		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		progress_bar.bar().setValue(0);
-		progress_bar.setVisible(true);
-
-		PrintWriter output = new PrintWriter(save_location);
-		for (DataNode n : root.getNodes()) {
-			getData(n, output);
-			output.print("\n");
-		}
-		output.close();
-		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
-
-		Log.debug("PrintWriter Complete");
 		Log.info("Save Complete");
 	}
 }

@@ -23,7 +23,7 @@ public class Runner {
 		boolean load_file = true;
 		int load_data_version = 0;
 		int save_data_version = 0;
-		boolean save_readable = false;
+		boolean save_readable = true;
 
 		// Handle Arguments
 		for (String arg : args) {

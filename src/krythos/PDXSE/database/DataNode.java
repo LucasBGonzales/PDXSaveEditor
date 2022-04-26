@@ -55,7 +55,7 @@ public class DataNode {
 	 */
 	public DataNode(String key, DataNode data, boolean isList) {
 		this(key, isList);
-		m_nodes.add(data);
+		addNode(data);
 	}
 
 

@@ -43,10 +43,8 @@ public class Controller {
 
 
 	/**
-	 * Will load the data from user-provided save file, then initialize
-	 * the Editor
-	 * GUI. If the user doesn't select a file, then the GUI will be loaded
-	 * with no
+	 * Will load the data from user-provided save file, then initialize the Editor
+	 * GUI. If the user doesn't select a file, then the GUI will be loaded with no
 	 * data tree.
 	 */
 	public Controller(boolean load_files, int load_data_version, int save_data_version, boolean save_readable) {
@@ -77,8 +75,7 @@ public class Controller {
 
 
 	/**
-	 * Sorts a Map in ascending or descending order based on the values of
-	 * the
+	 * Sorts a Map in ascending or descending order based on the values of the
 	 * key-value pairs.
 	 * 
 	 * @param unsortMap The unsorted map to sort.
@@ -100,12 +97,9 @@ public class Controller {
 
 
 	/**
-	 * Partner function for {@link #saveData_old(DataNode, File) saveData}
-	 * that
-	 * primarily retrieves and writes data to a PrintWriter stream. It is
-	 * recursive,
-	 * calling itself for each nested within the provided
-	 * {@link DataNode}.
+	 * Partner function for {@link #saveData_old(DataNode, File) saveData} that
+	 * primarily retrieves and writes data to a PrintWriter stream. It is recursive,
+	 * calling itself for each nested within the provided {@link DataNode}.
 	 * 
 	 * @param node   {@link DataNode} to write data from.
 	 * @param stream {@link PrintWriter} to write data to.
@@ -148,8 +142,7 @@ public class Controller {
 
 
 	/**
-	 * Prompts the user for a file location. It will attempt to default
-	 * the view to
+	 * Prompts the user for a file location. It will attempt to default the view to
 	 * the save-file location for Imperator: Rome save files.
 	 * 
 	 * @return {@link File} pointing to a file that may or may not exist.
@@ -169,8 +162,7 @@ public class Controller {
 
 
 	/**
-	 * Retrieves all the cultures represented by the pops in the given
-	 * nation.
+	 * Retrieves all the cultures represented by the pops in the given nation.
 	 * 
 	 * @param nationID Nation from which to search for cultures.
 	 * @return Cultures of pops in the nation.
@@ -198,12 +190,10 @@ public class Controller {
 
 
 	/**
-	 * Gets the Pop IDs of every pop in a province owned by the specified
-	 * nation.
+	 * Gets the Pop IDs of every pop in a province owned by the specified nation.
 	 * 
 	 * @param nation_id ID of the nation we want to get pops from.
-	 * @return {@link List} of {@link DataNode}s representing the IDs of
-	 *         the owned
+	 * @return {@link List} of {@link DataNode}s representing the IDs of the owned
 	 *         pops.
 	 */
 	private List<DataNode> getOwnedPops(Object nation_id) {
@@ -236,10 +226,8 @@ public class Controller {
 
 	/**
 	 * 
-	 * @param province {@link DataNode} of the province to retrieve the
-	 *                 pops from.
-	 * @return {@link List List<DataNode>} of all pops in the given
-	 *         province.
+	 * @param province {@link DataNode} of the province to retrieve the pops from.
+	 * @return {@link List List<DataNode>} of all pops in the given province.
 	 */
 	private List<DataNode> getPops(DataNode province) {
 		List<DataNode> pop_ids = new LinkedList<DataNode>();
@@ -279,8 +267,7 @@ public class Controller {
 	 * Returns the Primary Culture of the provided nation ID.
 	 * 
 	 * @param nation_id ID of the nation to get the primary culture from.
-	 * @return {@link String} of the primary culture, or <code>null</code>
-	 *         if
+	 * @return {@link String} of the primary culture, or <code>null</code> if
 	 *         retrieve failed.
 	 */
 	private String getPrimaryCulture(String nation_id) {
@@ -298,8 +285,7 @@ public class Controller {
 	 * Returns the Primary Religion of the provided nation ID.
 	 * 
 	 * @param nation_id ID of the nation to get the primary religion from.
-	 * @return {@link String} of the primary religion, or
-	 *         <code>null</code> if
+	 * @return {@link String} of the primary religion, or <code>null</code> if
 	 *         retrieve failed.
 	 */
 	private String getPrimaryReligion(String nation_id) {
@@ -397,60 +383,60 @@ public class Controller {
 					}
 				} else {
 					switch (c) {
-						case EQUALS:
-							// Add new Node, set it to working node.
-							DataNode newNodeE = new DataNode(buffer.trim());
-							working_node.addNode(newNodeE);
-							working_node = newNodeE;
+					case EQUALS:
+						// Add new Node, set it to working node.
+						DataNode newNodeE = new DataNode(buffer.trim());
+						working_node.addNode(newNodeE);
+						working_node = newNodeE;
 
-							// Stupid color formatting means I need a specific case for colors.
-							if (working_node.getKey().indexOf("color") == 0) {
-								f_color = true;
-							} else {
-								// Flip Equals flag, this information is needed for lists and
-								// returning from key-value pairs.
-								f_equals = true;
-							}
-							// Clear buffer
-							buffer = "";
-							break;
-						case NEWLIST:
-							// Named List, adjust working_node.
-							if (f_equals) {
-								working_node.setList(true);
-								f_equals = false;
-							} else {
-								// Unnamed List. Create new list node and set it to working_node.
-								DataNode newNodeNL = new DataNode("", true);
-								working_node.addNode(newNodeNL);
-								working_node = newNodeNL;
-							}
-							break;
-						case ENDLIST:
-							// End of a list, set working_node to working_node's parent.
-							working_node = working_node.getParent();
-							break;
-						case ENDLINE:
-							// If buffer has a value, create a new node and clear buffer.
-							if (buffer.trim().length() > 0) {
-								DataNode newNodeEL = new DataNode(buffer.trim());
-								working_node.addNode(newNodeEL);
-								// If this was a key-value pair, return to parent.
-								if (f_equals)
-									working_node = working_node.getParent();
-							}
-							buffer = "";
-							break;
-						case QUOTE:
-							// If we encounter a quote (and this will only ever be an opening
-							// quote, see if-else before this switch for closing quote), then set
-							// f_inQuote flag to true.
-							f_inQuote = true;
-							buffer += c;
-							break;
-						default:
-							// Add the current character to the buffer, set f_equals = false;
-							buffer += c;
+						// Stupid color formatting means I need a specific case for colors.
+						if (working_node.getKey().indexOf("color") == 0) {
+							f_color = true;
+						} else {
+							// Flip Equals flag, this information is needed for lists and
+							// returning from key-value pairs.
+							f_equals = true;
+						}
+						// Clear buffer
+						buffer = "";
+						break;
+					case NEWLIST:
+						// Named List, adjust working_node.
+						if (f_equals) {
+							working_node.setList(true);
+							f_equals = false;
+						} else {
+							// Unnamed List. Create new list node and set it to working_node.
+							DataNode newNodeNL = new DataNode("", true);
+							working_node.addNode(newNodeNL);
+							working_node = newNodeNL;
+						}
+						break;
+					case ENDLIST:
+						// End of a list, set working_node to working_node's parent.
+						working_node = working_node.getParent();
+						break;
+					case ENDLINE:
+						// If buffer has a value, create a new node and clear buffer.
+						if (buffer.trim().length() > 0) {
+							DataNode newNodeEL = new DataNode(buffer.trim());
+							working_node.addNode(newNodeEL);
+							// If this was a key-value pair, return to parent.
+							if (f_equals)
+								working_node = working_node.getParent();
+						}
+						buffer = "";
+						break;
+					case QUOTE:
+						// If we encounter a quote (and this will only ever be an opening
+						// quote, see if-else before this switch for closing quote), then set
+						// f_inQuote flag to true.
+						f_inQuote = true;
+						buffer += c;
+						break;
+					default:
+						// Add the current character to the buffer, set f_equals = false;
+						buffer += c;
 					}
 				}
 			}
@@ -471,8 +457,7 @@ public class Controller {
 
 
 	/**
-	 * Loads the Imperator: Rome save data from the provided file into a
-	 * DataNode.
+	 * Loads the Imperator: Rome save data from the provided file into a DataNode.
 	 * 
 	 * @param save_game {@link File} to load data from.
 	 * @return {@link DataNode} containing the loaded data.
@@ -644,15 +629,12 @@ public class Controller {
 
 
 	/**
-	 * Saves the provided data to a file at the provided location in a
-	 * format
+	 * Saves the provided data to a file at the provided location in a format
 	 * readable by Imperator: Rome.
 	 * 
-	 * @param root          The root {@link DataNode} to use, where all
-	 *                      the nested
+	 * @param root          The root {@link DataNode} to use, where all the nested
 	 *                      DataNodes are used to build the save file.
-	 * @param save_location {@link File} pointing to where the file should
-	 *                      be saved.
+	 * @param save_location {@link File} pointing to where the file should be saved.
 	 * @throws FileNotFoundException
 	 */
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
@@ -709,8 +691,12 @@ public class Controller {
 			// Determine Output
 
 			String tab = "";
-			if (parent.isList() && f_save_readable)
-				tab = (new String(new char[working_node.getDepth() - 1])).replace("\0", "\t");
+			try {
+				if (parent.isList() && f_save_readable)
+					tab = (new String(new char[working_node.getDepth() - 1])).replace("\0", "\t");
+			} catch (Exception e) {
+				Log.error(null, "This shouldn't have happened...", null);
+			}
 			String operator = "";
 
 			// Print key
@@ -747,15 +733,12 @@ public class Controller {
 
 
 	/**
-	 * Saves the provided data to a file at the provided location in a
-	 * format
+	 * Saves the provided data to a file at the provided location in a format
 	 * readable by Imperator: Rome.
 	 * 
-	 * @param root          The root {@link DataNode} to use, where all
-	 *                      the nested
+	 * @param root          The root {@link DataNode} to use, where all the nested
 	 *                      DataNodes are used to build the save file.
-	 * @param save_location {@link File} pointing to where the file should
-	 *                      be saved.
+	 * @param save_location {@link File} pointing to where the file should be saved.
 	 * @throws FileNotFoundException
 	 */
 	private void saveData_old(DataNode root, File save_location) throws FileNotFoundException {
@@ -782,8 +765,7 @@ public class Controller {
 
 
 	/**
-	 * Converts all pops of a user-provided nation ID to the primary
-	 * culture of that
+	 * Converts all pops of a user-provided nation ID to the primary culture of that
 	 * nation.
 	 */
 	public void cheatAssimilatePops() {
@@ -916,10 +898,8 @@ public class Controller {
 
 
 	/**
-	 * Generates a population and spreads it among the owned provinces of
-	 * a
-	 * particular nation, preferring to fill the lowest-population
-	 * provinces first.
+	 * Generates a population and spreads it among the owned provinces of a
+	 * particular nation, preferring to fill the lowest-population provinces first.
 	 */
 	public void cheatGeneratePops() {
 		Log.info("generatePopsCheat");
@@ -980,7 +960,7 @@ public class Controller {
 		}
 
 		////// Generate Pops //////
-		final String[] TYPES = { "nobles", "citizen", "freemen", "tribesmen", "slaves" };
+		final String[] TYPES = { "\"nobles\"", "\"citizen\"", "\"freemen\"", "\"tribesmen\"", "\"slaves\"" };
 
 		// Put owned Provinces into Map -- Do this first to determine if
 		// population can be assigned before creating the pops.
@@ -1032,6 +1012,7 @@ public class Controller {
 			// Add to population
 			population.addNode(newpop);
 		}
+		population.autoAssignParent(true);
 
 		////// Assign Pops to Provinces //////
 
@@ -1050,8 +1031,7 @@ public class Controller {
 
 
 	/**
-	 * Will merge two cultures in a nation. The culture to be merged
-	 * (converted) to
+	 * Will merge two cultures in a nation. The culture to be merged (converted) to
 	 * and from will be defined by the user.
 	 */
 	public void cheatMergeCultures() {
@@ -1225,8 +1205,7 @@ public class Controller {
 	 * Determines if the nation ID is valid.
 	 * 
 	 * @param nation_id ID to query.
-	 * @return <code>true</code> if the nation ID was found.
-	 *         <code>false</code> if
+	 * @return <code>true</code> if the nation ID was found. <code>false</code> if
 	 *         not.
 	 */
 	public boolean isValidNationID(String nation_id) {
@@ -1235,8 +1214,7 @@ public class Controller {
 
 
 	/**
-	 * Saves the data to a user-specified file in a format readable by
-	 * Imperator:
+	 * Saves the data to a user-specified file in a format readable by Imperator:
 	 * Rome.
 	 */
 	public void save() {

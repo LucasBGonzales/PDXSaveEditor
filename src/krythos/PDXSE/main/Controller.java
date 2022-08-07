@@ -728,7 +728,6 @@ public class Controller {
 		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
 
 		Log.debug("PrintWriter Complete");
-		Log.info("Save Complete");
 	}
 
 
@@ -1233,18 +1232,22 @@ public class Controller {
 				e.printStackTrace();
 			}
 		} else if (m_saveVersion == 0) {
-			try {
-				File save_location = getFile();
-				if (save_location == null) {
-					Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
-					return;
-				}
-				Log.info("Save File: " + save_location.getAbsolutePath());
-				saveData(m_data, save_location);
-			} catch (FileNotFoundException e) {
-				Log.error(null, e.getMessage(), m_editor);
-				e.printStackTrace();
+			File save_location = getFile();
+			if (save_location == null) {
+				Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+				return;
 			}
+			Log.info("Save File: " + save_location.getAbsolutePath());
+			final Runnable r = new Runnable() {
+				public void run() {
+					try {
+						saveData(m_data, save_location);
+					} catch (FileNotFoundException e) {
+						Log.error(e.getMessage());
+					}
+				}
+			};
+			new Thread(r).start();
 		} else {
 			Log.error("Invalid Save Version, Save Unsuccessful.");
 			return;

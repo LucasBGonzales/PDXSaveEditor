@@ -1,4 +1,4 @@
-package krythos.PDXSE.gui;
+package kytheros.PDXSE.gui;
 
 import java.awt.Container;
 import java.awt.event.KeyAdapter;
@@ -12,9 +12,9 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SpringLayout;
 
-import krythos.PDXSE.database.DataNode;
-import krythos.util.logger.Log;
-import krythos.util.swing.SwingMisc;
+import kytheros.PDXSE.database.DataNode;
+import kytheros.util.logger.Log;
+import kytheros.util.swing.SwingMisc;
 
 public class ProvinceEditorDialog extends JDialog {
 	private static final long serialVersionUID = 6501163777060294147L;
@@ -73,7 +73,7 @@ public class ProvinceEditorDialog extends JDialog {
 					cbxClaims.removeItem(cbxClaims.getSelectedItem());
 
 				else if (e.getKeyCode() == KeyEvent.VK_P) {
-					Log.info("Packing");
+					Log.get().info("Packing");
 					pack();
 				}
 

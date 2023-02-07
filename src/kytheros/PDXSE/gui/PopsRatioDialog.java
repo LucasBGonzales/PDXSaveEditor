@@ -1,4 +1,4 @@
-package krythos.PDXSE.gui;
+package kytheros.PDXSE.gui;
 
 import java.awt.Container;
 
@@ -12,7 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import krythos.util.swing.SwingMisc;
+import kytheros.util.swing.SwingMisc;
 
 /**
  * Specialized {@link JDialog} to get and provide an {@link Integer}
@@ -22,7 +22,7 @@ import krythos.util.swing.SwingMisc;
  * Use {@link PopsRatioDialog#runDialog() showDialog} to use this
  * dialog.
  * 
- * @author Krythos
+ * @author kytheros
  */
 public class PopsRatioDialog extends JDialog {
 	private static final long serialVersionUID = 7529802802667079039L;

@@ -1,4 +1,4 @@
-package krythos.PDXSE.main;
+package kytheros.PDXSE.main;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,17 +20,17 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileSystemView;
 
-import krythos.PDXSE.database.DataNode;
-import krythos.PDXSE.gui.EditorGUI;
-import krythos.PDXSE.gui.PopsRatioDialog;
-import krythos.PDXSE.gui.ProvinceEditorDialog;
-import krythos.util.logger.Log;
-import krythos.util.misc.KArrays;
-import krythos.util.misc.SystemUtils;
-import krythos.util.swing.KDialogs;
-import krythos.util.swing.SimpleProgressBar;
-import krythos.util.swing.dialogs.InputListDialog;
-import krythos.util.swing.dialogs.InputListDialog.ListSelection;
+import kytheros.PDXSE.database.DataNode;
+import kytheros.PDXSE.gui.EditorGUI;
+import kytheros.PDXSE.gui.PopsRatioDialog;
+import kytheros.PDXSE.gui.ProvinceEditorDialog;
+import kytheros.util.logger.Log;
+import kytheros.util.misc.KArrays;
+import kytheros.util.misc.SystemUtils;
+import kytheros.util.swing.KDialogs;
+import kytheros.util.swing.SimpleProgressBar;
+import kytheros.util.swing.dialogs.InputListDialog;
+import kytheros.util.swing.dialogs.InputListDialog.ListSelection;
 
 public class Controller {
 	private DataNode m_data;
@@ -49,9 +49,9 @@ public class Controller {
 	 */
 	public Controller(boolean load_files, int load_data_version, int save_data_version, boolean save_readable) {
 		m_data = null;
-		Log.info("Load Data Version: " + load_data_version);
-		Log.info("Save Data Version: " + load_data_version);
-		Log.info("Save Readable: " + save_readable);
+		Log.get().info("Load Data Version: " + load_data_version);
+		Log.get().info("Save Data Version: " + load_data_version);
+		Log.get().info("Save Readable: " + save_readable);
 		m_saveVersion = save_data_version;
 		f_save_readable = save_readable;
 		if (load_files) {
@@ -64,7 +64,7 @@ public class Controller {
 				else if (load_data_version == 1)
 					m_data = loadData_old(f);
 			} catch (IOException e1) {
-				Log.error(this, e1.getMessage());
+				Log.get().error(this, e1.getMessage());
 				e1.printStackTrace();
 			}
 		}
@@ -155,7 +155,7 @@ public class Controller {
 		else if (SystemUtils.isLinux())
 			def_file = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getPath()
 					+ "/.local/share/Paradox Interactive/Imperator/save games/");
-		Log.info("Filename: " + def_file.getPath());
+		Log.get().info("Filename: " + def_file.getPath());
 		File[] files = KDialogs.fileChooser(false, null, def_file);
 		return files != null && files.length > 0 ? files[0] : null;
 	}
@@ -275,7 +275,7 @@ public class Controller {
 			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "primary_culture" })
 					.getNode(0).getKey();
 		} catch (NullPointerException e) {
-			Log.error(null, "Failed Retrieval.", m_editor);
+			Log.get().error(null, "Failed Retrieval.", m_editor);
 			return null;
 		}
 	}
@@ -293,7 +293,7 @@ public class Controller {
 			return m_data.find((Object[]) new String[] { "country", "country_database", nation_id, "religion" })
 					.getNode(0).getKey();
 		} catch (NullPointerException e) {
-			Log.error(null, "Failed Retrieval.", m_editor);
+			Log.get().error(null, "Failed Retrieval.", m_editor);
 			return null;
 		}
 	}
@@ -309,7 +309,7 @@ public class Controller {
 
 
 	private DataNode loadData(File save_game) throws IOException {
-		Log.info("Loading File: " + save_game.getAbsolutePath());
+		Log.get().info("Loading File: " + save_game.getAbsolutePath());
 
 		// ProgressBar
 		int size_kb = (int) (save_game.length() / 1000);
@@ -325,7 +325,7 @@ public class Controller {
 		try {
 			br = new BufferedReader(new FileReader(save_game));
 		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
+			Log.get().error(e.getMessage());
 			System.exit(-1);
 		}
 
@@ -449,7 +449,7 @@ public class Controller {
 		progress_bar.dispose();
 
 		br.close();
-		Log.info("Load File Complete");
+		Log.get().info("Load File Complete");
 
 		return data_root;
 
@@ -464,7 +464,7 @@ public class Controller {
 	 * @throws IOException
 	 */
 	private DataNode loadData_old(File save_game) throws IOException {
-		Log.info("Loading File (OLD): " + save_game.getAbsolutePath());
+		Log.get().info("Loading File (OLD): " + save_game.getAbsolutePath());
 
 		// ProgressBar
 		int size_kb = (int) (save_game.length() / 1000);
@@ -480,7 +480,7 @@ public class Controller {
 		try {
 			br = new BufferedReader(new FileReader(save_game));
 		} catch (FileNotFoundException e) {
-			Log.error(e.getMessage());
+			Log.get().error(e.getMessage());
 			System.exit(0);
 			// e.printStackTrace();
 		}
@@ -522,7 +522,7 @@ public class Controller {
 					line = null;
 
 				} else if (first < 0 && !f_firstIteration) {
-					Log.error("Unhandled Case: First < 0 && !f_firstIteration");
+					Log.get().error("Unhandled Case: First < 0 && !f_firstIteration");
 					System.exit(0);
 				} else { // This is a line with operators
 					// Get the first operator & split it off.
@@ -584,7 +584,7 @@ public class Controller {
 							} else if (line.charAt(second) == EQUALS) {
 								line = parts[1];
 							} else {
-								Log.error("Unhandled Case in Operator==NEWNODE");
+								Log.get().error("Unhandled Case in Operator==NEWNODE");
 								System.exit(0);
 							}
 						} else {
@@ -622,7 +622,7 @@ public class Controller {
 		progress_bar.dispose();
 
 		br.close();
-		Log.info("Load File Complete");
+		Log.get().info("Load File Complete");
 
 		return data_root;
 	}
@@ -638,15 +638,15 @@ public class Controller {
 	 * @throws FileNotFoundException
 	 */
 	private void saveData(DataNode root, File save_location) throws FileNotFoundException {
-		Log.info("Saving Data...");
+		Log.get().info("Saving Data...");
 		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
-		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
+		Log.get().debug("Progress Bar Status:\n" + progress_bar.toString());
 		progress_bar.setTitle("Saving Data...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.bar().setValue(0);
 		progress_bar.setVisible(true);
 
-		Log.debug("Running PrintWriter");
+		Log.get().debug("Running PrintWriter");
 		PrintWriter output = new PrintWriter(save_location);
 
 		DataNode working_node, prev_node;
@@ -695,7 +695,7 @@ public class Controller {
 				if (parent.isList() && f_save_readable)
 					tab = (new String(new char[working_node.getDepth() - 1])).replace("\0", "\t");
 			} catch (Exception e) {
-				Log.error(null, "This shouldn't have happened...", null);
+				Log.get().error(null, "This shouldn't have happened...", null);
 			}
 			String operator = "";
 
@@ -727,7 +727,7 @@ public class Controller {
 		output.close();
 		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
 
-		Log.debug("PrintWriter Complete");
+		Log.get().debug("PrintWriter Complete");
 	}
 
 
@@ -741,15 +741,15 @@ public class Controller {
 	 * @throws FileNotFoundException
 	 */
 	private void saveData_old(DataNode root, File save_location) throws FileNotFoundException {
-		Log.info("Saving Data...");
+		Log.get().info("Saving Data...");
 		SimpleProgressBar progress_bar = new SimpleProgressBar(null, 0, (int) (m_data.byteLength()));
-		Log.debug("Progress Bar Status:\n" + progress_bar.toString());
+		Log.get().debug("Progress Bar Status:\n" + progress_bar.toString());
 		progress_bar.setTitle("Saving Data...");
 		progress_bar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		progress_bar.bar().setValue(0);
 		progress_bar.setVisible(true);
 
-		Log.debug("Running PrintWriter");
+		Log.get().debug("Running PrintWriter");
 		PrintWriter output = new PrintWriter(save_location);
 		for (DataNode n : root.getNodes()) {
 			getData(n, output);
@@ -758,8 +758,8 @@ public class Controller {
 		output.close();
 		progress_bar.bar().setValue(progress_bar.bar().getMaximum());
 
-		Log.debug("PrintWriter Complete");
-		Log.info("Save Complete");
+		Log.get().debug("PrintWriter Complete");
+		Log.get().info("Save Complete");
 	}
 
 
@@ -768,7 +768,7 @@ public class Controller {
 	 * nation.
 	 */
 	public void cheatAssimilatePops() {
-		Log.info("assimilatePopsCheat");
+		Log.get().info("assimilatePopsCheat");
 
 		String nation_id = null, province_id = null;
 
@@ -785,7 +785,7 @@ public class Controller {
 				nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
 						: nation_id;
 			} catch (NullPointerException e) {
-				Log.warn("Null Pointer Exception. Probably invalid province input.");
+				Log.get().warn("Null Pointer Exception. Probably invalid province input.");
 				nation_id = null;
 			}
 		}
@@ -796,8 +796,8 @@ public class Controller {
 
 		// Nothing Entered, or invalid..
 		if (nation_id == null) {
-			Log.warn("cheatAssimilatePops: Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			Log.get().warn("cheatAssimilatePops: Null Response. Leaving function");
+			Log.get().showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -805,7 +805,7 @@ public class Controller {
 		String culture = getPrimaryCulture(nation_id);
 
 		// Get Pops
-		Log.info("cheatAssimilatePops: Getting Pops...");
+		Log.get().info("cheatAssimilatePops: Getting Pops...");
 		List<DataNode> pop_ids_to_convert;
 		if (province_id == null)
 			pop_ids_to_convert = getOwnedPops(nation_id);
@@ -817,8 +817,8 @@ public class Controller {
 		for (DataNode pop : population)
 			pop.find("culture").getNode(0).setKey(culture);
 
-		Log.info("cheatAssimilatePops: Done.");
-		Log.showMessageDialog("Cheat Complete");
+		Log.get().info("cheatAssimilatePops: Done.");
+		Log.get().showMessageDialog("Cheat Complete");
 	}
 
 
@@ -827,7 +827,7 @@ public class Controller {
 	 * 
 	 */
 	public void cheatConvertPops() {
-		Log.info("convertPopsCheat");
+		Log.get().info("convertPopsCheat");
 
 		String nation_id = null, province_id = null;
 
@@ -844,7 +844,7 @@ public class Controller {
 				nation_id = province_id != null ? m_data.find("provinces", province_id, "owner").getNode(0).getKey()
 						: nation_id;
 			} catch (NullPointerException e) {
-				Log.warn("Null Pointer Exception. Probably invalid province input.");
+				Log.get().warn("Null Pointer Exception. Probably invalid province input.");
 				nation_id = null;
 			}
 		}
@@ -855,8 +855,8 @@ public class Controller {
 
 		// Nothing Entered, or invalid..
 		if (nation_id == null) {
-			Log.warn("cheatConvertPops: Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
+			Log.get().warn("cheatConvertPops: Null Response. Leaving function");
+			Log.get().showMessageDialog(m_editor, "No or Invalid Response. Quitting Function");
 			return;
 		}
 
@@ -864,7 +864,7 @@ public class Controller {
 		String religion = getPrimaryReligion(nation_id);
 
 		// Get Pops
-		Log.info("cheatConvertPops: Getting Pops...");
+		Log.get().info("cheatConvertPops: Getting Pops...");
 		List<DataNode> pop_ids_to_convert;
 		if (province_id == null)
 			pop_ids_to_convert = getOwnedPops(nation_id);
@@ -876,8 +876,8 @@ public class Controller {
 		for (DataNode pop : population)
 			pop.find("religion").getNode(0).setKey(religion);
 
-		Log.info("cheatConvertPops: Done.");
-		Log.showMessageDialog("Cheat Complete");
+		Log.get().info("cheatConvertPops: Done.");
+		Log.get().showMessageDialog("Cheat Complete");
 	}
 
 
@@ -887,7 +887,7 @@ public class Controller {
 	public void cheatEditProvince() {
 		String province_id = getProvinceID();
 		if (province_id == null) {
-			Log.warn(null, "No Province ID Selected. Exiting Function.", m_editor);
+			Log.get().warn(null, "No Province ID Selected. Exiting Function.", m_editor);
 			return;
 		}
 		DataNode province = m_data.find("provinces", province_id.toString());
@@ -901,7 +901,7 @@ public class Controller {
 	 * particular nation, preferring to fill the lowest-population provinces first.
 	 */
 	public void cheatGeneratePops() {
-		Log.info("generatePopsCheat");
+		Log.get().info("generatePopsCheat");
 
 		String str_response;
 		int int_response;
@@ -913,16 +913,16 @@ public class Controller {
 		// Nation ID
 		nation_id = getNationID();
 		if (nation_id == null) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.get().debug("Null Response. Leaving function");
+			Log.get().showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		}
 
 		// # Pops to Create
 		str_response = JOptionPane.showInputDialog("Enter Number of Pops to Create: ");
 		if (str_response == null || str_response.trim().equals("")) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.get().debug("Null Response. Leaving function");
+			Log.get().showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		} else
 			pop_number = Integer.valueOf(str_response.trim());
@@ -937,8 +937,8 @@ public class Controller {
 		else {
 			str_response = JOptionPane.showInputDialog("Enter Culture: ");
 			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug("Null Response. Leaving function");
-				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				Log.get().debug("Null Response. Leaving function");
+				Log.get().showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
 				culture = str_response.trim();
@@ -951,8 +951,8 @@ public class Controller {
 		else {
 			str_response = JOptionPane.showInputDialog("Enter Religion: ");
 			if (str_response == null || str_response.trim().equals("")) {
-				Log.debug("Null Response. Leaving function");
-				Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+				Log.get().debug("Null Response. Leaving function");
+				Log.get().showMessageDialog(m_editor, "No Entry, Quitting Function");
 				return;
 			} else
 				religion = str_response.trim();
@@ -976,7 +976,7 @@ public class Controller {
 		}
 
 		if (map_populations.size() <= 0) {
-			Log.warn(null, "Generate Pops Cheat:\nNation doesn't have any provinces. Leaving function.", m_editor);
+			Log.get().warn(null, "Generate Pops Cheat:\nNation doesn't have any provinces. Leaving function.", m_editor);
 			return;
 		}
 
@@ -1025,7 +1025,7 @@ public class Controller {
 					count + ((!province.find("province_rank").getKeyValue().equals("settlement")) ? 1f / 4.4f : 1));
 		}
 
-		Log.showMessageDialog("Cheat Complete");
+		Log.get().showMessageDialog("Cheat Complete");
 	}
 
 
@@ -1039,15 +1039,15 @@ public class Controller {
 
 		nation_id = getNationID();
 		if (nation_id == null) {
-			Log.debug("Null Response. Leaving function");
-			Log.showMessageDialog(m_editor, "No Entry, Quitting Function");
+			Log.get().debug("Null Response. Leaving function");
+			Log.get().showMessageDialog(m_editor, "No Entry, Quitting Function");
 			return;
 		}
 
 		nationCultures = getNationCultures(nation_id).toArray();
 		// Ensure there are enough cultures to merge.
 		if (nationCultures.length < 2) {
-			Log.showMessageDialog(m_editor, "Not enough cultures to merge.");
+			Log.get().showMessageDialog(m_editor, "Not enough cultures to merge.");
 			return;
 		}
 
@@ -1064,8 +1064,8 @@ public class Controller {
 									KArrays.indexOf(nationCultures, getPrimaryCulture(nation_id))))
 					.getValue().toString();
 		} catch (NullPointerException e) {
-			Log.warn("Null Response, Leaving Function");
-			Log.showMessageDialog(m_editor, "No Entry, Quiting Function.");
+			Log.get().warn("Null Response, Leaving Function");
+			Log.get().showMessageDialog(m_editor, "No Entry, Quiting Function.");
 			return;
 		}
 		// Get Pops
@@ -1078,7 +1078,7 @@ public class Controller {
 				culture.setKey(culture_to);
 		}
 
-		Log.showMessageDialog("Cheat Complete");
+		Log.get().showMessageDialog("Cheat Complete");
 	}
 
 
@@ -1091,7 +1091,7 @@ public class Controller {
 		// Nation ID
 		String nation_id = getNationID();
 		if (nation_id == null) {
-			Log.info(null, "No Entry. Leaving function", m_editor);
+			Log.get().info(null, "No Entry. Leaving function", m_editor);
 			return;
 		}
 
@@ -1121,7 +1121,7 @@ public class Controller {
 			}
 
 		if (cheat_option < 0) {
-			Log.info(null, "No Choice Selected. Leaving Function", m_editor);
+			Log.get().info(null, "No Choice Selected. Leaving Function", m_editor);
 			return;
 		}
 
@@ -1159,7 +1159,7 @@ public class Controller {
 			// Show modification window and get results.
 			list_selections = KDialogs.showInputListDialog(m_editor, list_selections);
 			if (list_selections == null) {
-				Log.info(null, "Canceled Cheat.", m_editor);
+				Log.get().info(null, "Canceled Cheat.", m_editor);
 				return;
 			}
 
@@ -1170,7 +1170,7 @@ public class Controller {
 			}
 		}
 
-		Log.showMessageDialog(m_editor, "Cheat Complete");
+		Log.get().showMessageDialog(m_editor, "Cheat Complete");
 	}
 
 
@@ -1185,11 +1185,11 @@ public class Controller {
 		nation_tag = "\"" + nation_tag.toUpperCase() + "\"";
 		DataNode country_database = m_data.find("country", "country_database");
 		if (country_database == null)
-			Log.warn("country_database was null. Probably because nothing was loaded.");
+			Log.get().warn("country_database was null. Probably because nothing was loaded.");
 		else {
 			for (DataNode node : country_database.getNodes()) {
 				if (node.getKey().equals("599")) {
-					Log.debug("bleh");
+					Log.get().debug("bleh");
 					node.find("tag").getKeyValue();
 				}
 				if (node.find("tag").getKeyValue().equals(nation_tag))
@@ -1217,41 +1217,41 @@ public class Controller {
 	 * Rome.
 	 */
 	public void save() {
-		Log.info("Saving File [version " + m_saveVersion + "]:");
+		Log.get().info("Saving File [version " + m_saveVersion + "]:");
 		if (m_saveVersion == 1) {
 			try {
 				File save_location = getFile();
 				if (save_location == null) {
-					Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+					Log.get().warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
 					return;
 				}
-				Log.info("Save File: " + save_location.getAbsolutePath());
+				Log.get().info("Save File: " + save_location.getAbsolutePath());
 				saveData_old(m_data, save_location);
 			} catch (FileNotFoundException e) {
-				Log.error(null, e.getMessage(), m_editor);
+				Log.get().error(null, e.getMessage(), m_editor);
 				e.printStackTrace();
 			}
 		} else if (m_saveVersion == 0) {
 			File save_location = getFile();
 			if (save_location == null) {
-				Log.warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
+				Log.get().warn(null, "No Save Location Selected. Cancelling Save.", m_editor);
 				return;
 			}
-			Log.info("Save File: " + save_location.getAbsolutePath());
+			Log.get().info("Save File: " + save_location.getAbsolutePath());
 			final Runnable r = new Runnable() {
 				public void run() {
 					try {
 						saveData(m_data, save_location);
 					} catch (FileNotFoundException e) {
-						Log.error(e.getMessage());
+						Log.get().error(e.getMessage());
 					}
 				}
 			};
 			new Thread(r).start();
 		} else {
-			Log.error("Invalid Save Version, Save Unsuccessful.");
+			Log.get().error("Invalid Save Version, Save Unsuccessful.");
 			return;
 		}
-		Log.info("Save Complete");
+		Log.get().info("Save Complete");
 	}
 }

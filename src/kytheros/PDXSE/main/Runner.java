@@ -1,6 +1,6 @@
-package krythos.PDXSE.main;
+package kytheros.PDXSE.main;
 
-import krythos.util.logger.Log;
+import kytheros.util.logger.Log;
 
 public class Runner {
 	private static final int HELP = 0;
@@ -19,7 +19,7 @@ public class Runner {
 
 
 	public static void main(String[] args) {
-		Log.setLevel(Log.LEVEL_DISABLED);
+		new Log(Log.ERROR, false);
 		boolean load_file = true;
 		int load_data_version = 0;
 		int save_data_version = 0;
@@ -33,7 +33,7 @@ public class Runner {
 				load_file = Boolean.valueOf(parts[1]);
 
 			else if (parts[0].equals(ARG_COMS[LOG]) && parts.length > 1)
-				Log.setLevel(Integer.valueOf(parts[1]));
+				Log.get().setLevel(Integer.valueOf(parts[1]));
 
 			else if (parts[0].equals(ARG_COMS[LOAD_DATA_V]))
 				load_data_version = Integer.valueOf(parts[1]);

@@ -1,4 +1,4 @@
-package krythos.PDXSE.gui;
+package kytheros.PDXSE.gui;
 
 import java.awt.Component;
 import java.awt.event.ComponentAdapter;
@@ -23,12 +23,12 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeSelectionModel;
 
-import krythos.PDXSE.database.DataNode;
-import krythos.PDXSE.main.Controller;
-import krythos.util.abstract_interfaces.FunctionalAction;
-import krythos.util.logger.Log;
-import krythos.util.swing.SimpleProgressBar;
-import krythos.util.swing.SwingMisc;
+import kytheros.PDXSE.database.DataNode;
+import kytheros.PDXSE.main.Controller;
+import kytheros.util.abstract_interfaces.FunctionalAction;
+import kytheros.util.logger.Log;
+import kytheros.util.swing.SimpleProgressBar;
+import kytheros.util.swing.SwingMisc;
 
 public class EditorGUI extends JFrame {
 	private static final long serialVersionUID = 2369002556725993873L;
@@ -215,11 +215,11 @@ public class EditorGUI extends JFrame {
 
 	public void updateValue(DataNode node, String value) {
 		if (node == null) {
-			Log.debug(this, "updateValue: Node is Null.");
-			Log.showMessageDialog("Please Select a Node.");
+			Log.get().debug(this, "updateValue: Node is Null.");
+			Log.get().showMessageDialog("Please Select a Node.");
 			return;
 		}
-		Log.debug(this, "UpdateValue: " + node.toString(0) + ", " + value);
+		Log.get().debug(this, "UpdateValue: " + node.toString(0) + ", " + value);
 		node.setKey(m_txtEditorValue.getText());
 		((DefaultTreeModel) m_tree.getModel()).reload();
 	}
@@ -231,7 +231,7 @@ public class EditorGUI extends JFrame {
 			DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) m_tree.getLastSelectedPathComponent();
 			if (selectedNode == null)
 				return;
-			Log.debug(this, "Selected: " + selectedNode.toString());
+			Log.get().debug(this, "Selected: " + selectedNode.toString());
 			m_selectedNode = (DataNode) ((DefaultMutableTreeNode) selectedNode).getUserObject();
 			DefaultMutableTreeNode parentNode = ((DefaultMutableTreeNode) selectedNode.getParent());
 
